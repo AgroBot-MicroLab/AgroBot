@@ -1,6 +1,6 @@
-module github.com/AgroBot-MicroLab/AgroBot
+module agro-bot
 
-go 1.23.1
+go 1.24.6
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect

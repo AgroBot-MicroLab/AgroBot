@@ -1,23 +1,15 @@
-FROM golang:1.23.1 AS dev
+FROM golang:1.24.6 AS dev
+
 WORKDIR /var/www
 
-COPY backend/go.* ./
-RUN go mod download || true
-COPY backend/ .
-EXPOSE 8080
-CMD ["go","run","./cmd/api"]
+RUN go install github.com/air-verse/air@v1.62.0
 
-FROM golang:1.22 AS build
-WORKDIR /src
-COPY backend/go.* ./
-RUN go mod download || true
-COPY backend/ .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /out/api ./cmd/api
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
 
-FROM gcr.io/distroless/static:nonroot
-WORKDIR /var/www
-COPY --from=build /out/api ./api
+COPY backend/ .
+
 EXPOSE 8080
-USER nonroot
-ENTRYPOINT ["./api"]
+
+CMD ["air", "-c", ".air.toml"]
 
