@@ -1,5 +1,5 @@
 FROM node:22-alpine AS dev
-WORKDIR /app
+WORKDIR /var/www
 RUN corepack enable   # enables yarn bundled with Node >=16
 COPY frontend/package.json frontend/yarn.lock ./
 RUN yarn install --frozen-lockfile

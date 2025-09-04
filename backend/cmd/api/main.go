@@ -28,7 +28,8 @@ func main() {
         Test: handler.TestHandler{DB: db},
     }
 
-    mux := router.NewMux(h)
+    mux := http.NewServeMux()
+    router.TestRouter(mux, h);
 
     log.Println("listening on :8080")
     log.Fatal(http.ListenAndServe(":8080", mux))

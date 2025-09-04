@@ -12,9 +12,7 @@ type Handlers struct {
     Test handler.TestHandler
 }
 
-func NewMux(h Handlers) *http.ServeMux {
-    mux := http.NewServeMux()
-
+func TestRouter(mux *http.ServeMux, h Handlers) {
     mux.HandleFunc("/tests", func(w http.ResponseWriter, r *http.Request) {
         switch r.Method {
         case http.MethodGet:
@@ -44,7 +42,5 @@ func NewMux(h Handlers) *http.ServeMux {
             http.NotFound(w, r)
         }
     })
-
-    return mux
 }
 

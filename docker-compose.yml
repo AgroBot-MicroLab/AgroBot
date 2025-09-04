@@ -18,11 +18,10 @@ services:
       target: dev
     volumes:
       - ./frontend:/var/www
-      - node_modules_cache:/var/www/node_modules
     ports: ["5173:5173"]
     environment:
-      - VITE_API_BASE=http://localhost:8080
-
+      VITE_GOOGLE_MAPS_KEY: "AIzaSyCO7jmmpwFItFAlf-v2VVjKpLAmfBSEO8k"
+      VITE_API_BASE: "http://localhost:8080"
   db:
     image: postgres:16-alpine
     environment:
