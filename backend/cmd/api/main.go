@@ -24,12 +24,10 @@ func main() {
     }
     defer db.Close()
 
-    h := router.Handlers{
-        Test: handler.TestHandler{DB: db},
-    }
-
     mux := http.NewServeMux()
-    router.TestRouter(mux, h);
+
+    testHandler := handler.TestHandler{DB: db}
+    router.TestRouter(mux, testHandler);
 
     log.Println("listening on :8080")
     log.Fatal(http.ListenAndServe(":8080", mux))
