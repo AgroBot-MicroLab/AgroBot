@@ -5,9 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6f0a1ebc-b9e1-44b0-8351-dd00f925b61a" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/backend/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/backend/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/backend/go.sum" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/uploads/3.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/uploads/4.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/uploads/6.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/uploads/7.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/uploads/DRONE123_1757064887228121491.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/uploads/DRONE123_1757067086357518198.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/cmd/api/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/cmd/api/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/internal/http/handler/image.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/internal/http/handler/image.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/internal/http/router/image.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/internal/http/router/image.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/tmp/api" beforeDir="false" afterPath="$PROJECT_DIR$/backend/tmp/api" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/tmp/build-errors.log" beforeDir="false" afterPath="$PROJECT_DIR$/backend/tmp/build-errors.log" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

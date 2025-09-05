@@ -4,14 +4,13 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -33,16 +32,20 @@ type ImageRecord struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, id string) {
+func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr string) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if id == "" || strings.Contains(id, "/") {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+
+	// {id} в URL — это point_id
+	pointID, err := strconv.ParseInt(pointIDStr, 10, 64)
+	if err != nil || pointID <= 0 {
+		http.Error(w, "invalid point id", http.StatusBadRequest)
 		return
 	}
 
+	// ждём multipart/form-data с полем image
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
 	if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "multipart/form-data") {
 		http.Error(w, "expected multipart/form-data", http.StatusBadRequest)
@@ -60,16 +63,16 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, id string) 
 	}
 	defer file.Close()
 
+	// определить расширение
 	head := make([]byte, 512)
 	n, _ := io.ReadFull(file, head)
-	detected := http.DetectContentType(head[:n])
-	if !isAllowedImage(detected) {
-		http.Error(w, "unsupported content-type: "+detected, http.StatusUnsupportedMediaType)
+	ctype := http.DetectContentType(head[:n])
+	if !isAllowedImage(ctype) {
+		http.Error(w, "unsupported content-type: "+ctype, http.StatusUnsupportedMediaType)
 		return
 	}
-
 	ext := ".bin"
-	if exts, _ := mime.ExtensionsByType(detected); len(exts) > 0 {
+	if exts, _ := mime.ExtensionsByType(ctype); len(exts) > 0 {
 		ext = exts[0]
 	}
 
@@ -77,61 +80,105 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, id string) 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	filename := fmt.Sprintf("%s_%d%s", sanitize(id), time.Now().UnixNano(), ext)
-	path := filepath.Join(uploadDir, filename)
 
-	out, err := os.Create(path)
+	// Транзакция: INSERT images → сохранить файл как <imageID>.<ext> → UPDATE images.path → UPDATE point.image_id
+	tx, err := h.DB.BeginTx(r.Context(), nil)
 	if err != nil {
-		http.Error(w, "save error: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	var imageID int64
+	var capturedAt time.Time
+
+	// если path NOT NULL — используем пустую строку, потом обновим реальным путём
+	if err = tx.QueryRowContext(r.Context(),
+		`INSERT INTO images (path) VALUES ('') RETURNING id, captured_at`,
+	).Scan(&imageID, &capturedAt); err != nil {
+		http.Error(w, "db insert images: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	filename := fmt.Sprintf("%d%s", imageID, ext) // uploads/<imageID>.<ext>
+	relPath := filepath.ToSlash(filepath.Join(uploadDir, filename))
+
+	out, e := os.Create(relPath)
+	if e != nil {
+		err = e
+		http.Error(w, "save error: "+e.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer out.Close()
 
 	hh := sha256.New()
-	var size int64
+	size := int64(0)
 
-	if _, err := out.Write(head[:n]); err != nil {
-		http.Error(w, "write error: "+err.Error(), http.StatusInternalServerError)
+	// записываем уже прочитанное
+	if _, e = out.Write(head[:n]); e != nil {
+		err = e
+		http.Error(w, "write error: "+e.Error(), http.StatusInternalServerError)
 		return
 	}
 	_, _ = hh.Write(head[:n])
 	size += int64(n)
 
-	wrote, err := io.Copy(io.MultiWriter(out, hh), file)
-	if err != nil {
-		var me *multipart.Part
-		if errors.As(err, &me) {
-			http.Error(w, "multipart error: "+err.Error(), http.StatusBadRequest)
-		} else {
-			http.Error(w, "write error: "+err.Error(), http.StatusInternalServerError)
-		}
+	// дописываем остальное
+	wrote, e := io.Copy(io.MultiWriter(out, hh), file)
+	if e != nil {
+		err = e
+		http.Error(w, "write error: "+e.Error(), http.StatusInternalServerError)
 		return
 	}
 	size += wrote
 
-	// В БД пишем только path (как в твоей схеме), id и captured_at получаем через RETURNING
-	storedPath := filepath.ToSlash(path) // чтобы в БД были прямые слэши
-	var dbID int64
-	var capturedAt time.Time
-
-	if err := h.DB.QueryRow(
-		`INSERT INTO images (path) VALUES ($1) RETURNING id, captured_at`,
-		storedPath,
-	).Scan(&dbID, &capturedAt); err != nil {
-		_ = os.Remove(path)
-		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+	// обновляем путь в images
+	if _, e = tx.ExecContext(r.Context(),
+		`UPDATE images SET path=$1 WHERE id=$2`, relPath, imageID); e != nil {
+		err = e
+		http.Error(w, "db update images.path: "+e.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Ответ клиенту (ничего в схеме не меняем)
-	resp := map[string]any{
-		"id":          dbID,       // PK из БД
-		"path":        storedPath, // что записали в БД
-		"captured_at": capturedAt.UTC(),
-		"drone_id":    id,   // id из URL, для информации
-		"size":        size, // сервисная инфа (не в БД)
+	// ТОЛЬКО таблица point
+	res, e := tx.ExecContext(r.Context(),
+		`UPDATE point SET image_id=$1 WHERE id=$2 AND (image_id IS DISTINCT FROM $1)`,
+		imageID, pointID)
+	if e != nil {
+		err = e
+		_ = os.Remove(relPath)                                                        // чистим файл
+		_, _ = tx.ExecContext(r.Context(), `DELETE FROM images WHERE id=$1`, imageID) // чистим запись
+		http.Error(w, "update point: "+e.Error(), http.StatusInternalServerError)
+		return
+	}
+	if nrows, _ := res.RowsAffected(); nrows == 0 {
+		// point с таким id не найден → чистим и даём 404
+		_ = os.Remove(relPath)
+		_, _ = tx.ExecContext(r.Context(), `DELETE FROM images WHERE id=$1`, imageID)
+		err = fmt.Errorf("point %d not found", pointID)
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
 	}
 
+	if e := tx.Commit(); e != nil {
+		err = e
+		_ = os.Remove(relPath)
+		http.Error(w, e.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = nil
+
+	resp := map[string]any{
+		"image_id":    imageID,
+		"point_id":    pointID,
+		"path":        relPath, // uploads/<imageID>.<ext>
+		"captured_at": capturedAt.UTC(),
+		"size":        size,
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(resp)

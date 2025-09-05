@@ -11,6 +11,7 @@ services:
     environment:
       - GOTOOLCHAIN=auto
       - DATABASE_URL=postgres://app:secret@db:5432/appdb?sslmode=disable
+      - UPLOAD_DIR=/var/www/uploads
     depends_on:
       db:
         condition: service_healthy
