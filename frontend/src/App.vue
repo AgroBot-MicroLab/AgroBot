@@ -4,7 +4,6 @@ import Map from './components/Map.vue'
 
 <template>
     <Map />
-    <h1> Test </h1>
 </template>
 
 <style scoped>
