@@ -28,6 +28,9 @@ func main() {
 
     testHandler := handler.TestHandler{DB: db}
     router.TestRouter(mux, testHandler);
+    
+    pointsHandler := handler.PointsHandler{DB: db}
+    router.PointsRouter(mux, pointsHandler)
 
     log.Println("listening on :8080")
     log.Fatal(http.ListenAndServe(":8080", mux))
