@@ -17,8 +17,8 @@ onMounted(async () => {
 
 function onRightClick(e) {
     e.domEvent?.preventDefault?.()
-    pos.value = { lat: e.latLng.lat(), lng: e.latLng.lng() }
-    emit('update:point', pos.value)
+    targetPos.value = { lat: e.latLng.lat(), lng: e.latLng.lng() }
+    emit('update:point', targetPos.value)
 }
 
 const props = defineProps({
