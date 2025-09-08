@@ -4,5 +4,7 @@ RUN corepack enable
 COPY frontend/package.json frontend/yarn.lock ./
 RUN yarn install --frozen-lockfile
 COPY frontend/ .
+ENV PATH="/var/www/node_modules/.bin:${PATH}"
 EXPOSE 5173
-CMD ["yarn", "dev", "--host", "0.0.0.0"]
+CMD ["yarn","dev","--host","0.0.0.0"]
+
