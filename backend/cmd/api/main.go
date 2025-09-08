@@ -12,6 +12,21 @@ import (
     "agro-bot/internal/http/router"
 )
 
+func corsMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+        if r.Method == http.MethodOptions {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        next.ServeHTTP(w, r)
+    })
+}
+
 func main() {
     dsn := os.Getenv("DATABASE_URL")
     if dsn == "" {
@@ -28,11 +43,12 @@ func main() {
 
     testHandler := handler.TestHandler{DB: db}
     router.TestRouter(mux, testHandler);
-    
+
     pointsHandler := handler.PointsHandler{DB: db}
     router.PointsRouter(mux, pointsHandler)
 
-    log.Println("listening on :8080")
-    log.Fatal(http.ListenAndServe(":8080", mux))
-}
+    handler := corsMiddleware(mux)
 
+    log.Println("listening on :8080")
+    log.Fatal(http.ListenAndServe(":8080", handler))
+}

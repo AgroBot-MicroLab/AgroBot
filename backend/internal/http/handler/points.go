@@ -26,7 +26,7 @@ func (h PointsHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	rows, err := h.DB.QueryContext(ctx, `SELECT * FROM point ORDER BY id`)
+	rows, err := h.DB.QueryContext(ctx, `SELECT * FROM point ORDER BY id DESC LIMIT 1`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -71,14 +71,14 @@ func (h PointsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	var id int
 	err := h.DB.QueryRowContext(ctx, `INSERT INTO point(lat, long)
     VALUES ($1, $2)
-    RETURNING id`, in.Lat, in.Long).Scan(&id)
+    RETURNING id`, in.Lat, in.Long).Scan(&res.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	writeJSON(w, res, http.StatusCreated)
 }
 
