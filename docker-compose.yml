@@ -7,7 +7,9 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend:/var/www
-    ports: ["8080:8080"]
+    ports:
+      - "8080:8080"
+      - "14550:14550/udp"
     environment:
       - GOTOOLCHAIN=auto
       - DATABASE_URL=postgres://app:secret@db:5432/appdb?sslmode=disable

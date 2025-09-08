@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { GoogleMap, AdvancedMarker } from 'vue3-google-map'
-import { getCurrentPoint } from '../services/points.js'
+import { getCurrentPoint } from '@/services/points.js'
+import { useWebSocket } from '@/composables/useWebSocket'
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY
 const targetPos = ref(null);
@@ -25,14 +26,25 @@ const props = defineProps({
     point: Object
 })
 
+const {send, close} = useWebSocket("ws://localhost:8080/drone/position", (data) => {
+    dronePos.value = { lat: null, lng: null };
+    dronePos.value.lat = data.lat;
+    dronePos.value.lng = data.lon;
+});
+
+onBeforeUnmount(() => {
+    close();
+});
+
 const emit = defineEmits(['update:point']);
+
 </script>
 
 <template>
     <GoogleMap
         :api-key="apiKey"
         map-id="main-map"
-        :center="targetPos || { lat: 46.53834103516799, lng: 29.84049779990818 }"
+        :center="{ lat: -35.363163, lng: 149.1652221 }"
         :zoom="18"
         map-type-id="satellite"
         style="width:100%; height:100vh"

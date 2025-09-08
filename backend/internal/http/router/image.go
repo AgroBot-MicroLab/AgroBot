@@ -7,7 +7,6 @@ import (
 )
 
 func ImageRouter(mux *http.ServeMux, h handler.ImageHandler) {
-	// Go 1.22+
 	mux.HandleFunc("POST /image/{id}", func(w http.ResponseWriter, r *http.Request) {
 		h.Upload(w, r, r.PathValue("id"))
 	})
@@ -15,7 +14,6 @@ func ImageRouter(mux *http.ServeMux, h handler.ImageHandler) {
 		h.Upload(w, r, r.PathValue("id"))
 	})
 
-	// Совместимо со старым ServeMux (на всякий случай)
 	mux.HandleFunc("/image/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.NotFound(w, r)
