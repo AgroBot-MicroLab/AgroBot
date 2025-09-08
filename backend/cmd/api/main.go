@@ -47,12 +47,13 @@ func main() {
     pointsHandler := handler.PointsHandler{DB: db}
     router.PointsRouter(mux, pointsHandler)
 
-    handler := corsMiddleware(mux)
 
 	imgHandler := handler.ImageHandler{DB: db}
 	router.ImageRouter(mux, imgHandler)
 	router.DeletePointRouter(mux, imgHandler)
 
+    handler := corsMiddleware(mux)
+
 	log.Println("listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }
