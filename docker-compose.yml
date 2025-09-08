@@ -31,6 +31,7 @@ services:
     environment:
       VITE_GOOGLE_MAPS_KEY: "AIzaSyCO7jmmpwFItFAlf-v2VVjKpLAmfBSEO8k"
       VITE_API_BASE: "http://localhost:8080"
+      VITE_API_BASE_WS: "ws://localhost:8080"
     command: >
       sh -lc "yarn install --frozen-lockfile &&
               yarn dev --host 0.0.0.0"

@@ -5,16 +5,10 @@ import { getCurrentPoint } from '@/services/points.js'
 import { useWebSocket } from '@/composables/useWebSocket'
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY
+const wsBaseUrl = import.meta.env.VITE_API_BASE_WS
 const targetPos = ref(null);
 const dronePos = ref(null);
 dronePos.value = { lat: 46.53834103516799, lng: 29.84049779990818 };
-
-onMounted(async () => {
-    const [point] = await getCurrentPoint();
-    targetPos.value = { lat: null, lng: null };
-    targetPos.value.lat = point.latitude;
-    targetPos.value.lng = point.longitude;
-});
 
 function onRightClick(e) {
     e.domEvent?.preventDefault?.()
@@ -26,7 +20,7 @@ const props = defineProps({
     point: Object
 })
 
-const {send, close} = useWebSocket("ws://localhost:8080/drone/position", (data) => {
+const {send, close} = useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
     dronePos.value = { lat: null, lng: null };
     dronePos.value.lat = data.lat;
     dronePos.value.lng = data.lon;
