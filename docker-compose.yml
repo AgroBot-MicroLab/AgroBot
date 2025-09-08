@@ -21,6 +21,7 @@ services:
       context: .
       dockerfile: .docker/frontend/Dockerfile
       target: dev
+    working_dir: /var/www
     volumes:
       - ./frontend:/var/www
       - node_modules_cache:/var/www/node_modules
@@ -28,6 +29,10 @@ services:
     environment:
       VITE_GOOGLE_MAPS_KEY: "AIzaSyCO7jmmpwFItFAlf-v2VVjKpLAmfBSEO8k"
       VITE_API_BASE: "http://localhost:8080"
+    command: >
+      sh -lc "yarn install --frozen-lockfile &&
+              yarn dev --host 0.0.0.0"
+
   db:
     image: postgres:16-alpine
     environment:
