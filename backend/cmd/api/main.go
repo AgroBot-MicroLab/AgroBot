@@ -12,37 +12,9 @@ import (
 	"agro-bot/internal/http/router"
 	"agro-bot/internal/http/middleware"
 	"agro-bot/internal/ws"
-
-    gomavlib "github.com/bluenviron/gomavlib/v2"
-    "github.com/bluenviron/gomavlib/v2/pkg/dialects/ardupilotmega"
+    "agro-bot/internal/mav"
 )
 
-func startMAVLink() {
-     node, err := gomavlib.NewNode(gomavlib.NodeConf{
-        Endpoints:      []gomavlib.EndpointConf{gomavlib.EndpointUDPServer{Address: "0.0.0.0:14550"}},
-        Dialect:        ardupilotmega.Dialect,
-        OutVersion:     gomavlib.V2,
-        OutSystemID:    255,
-        OutComponentID: 190,
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    go func() {
-        defer node.Close()
-        for evt := range node.Events() {
-            if f, ok := evt.(*gomavlib.EventFrame); ok {
-                if gp, ok := f.Message().(*ardupilotmega.MessageGlobalPositionInt); ok {
-                    ws.DronePosBroadcast(ws.Pos{
-                        Lat: float64(gp.Lat) / 1e7,
-                        Lon: float64(gp.Lon) / 1e7,
-                    })
-                }
-            }
-        }
-    }()
-}
 
 func main() {
 	dsn := os.Getenv("DATABASE_URL")
@@ -56,9 +28,24 @@ func main() {
 	}
 	defer db.Close()
 
-    startMAVLink()
+    mavc, err := mav.New(mav.Options{
+        UDPAddr:         "0.0.0.0:14550",
+        OutSystemID:     255,
+        OutComponentID:  190,
+        TargetSystem:    1,
+        TargetComponent: 1,
+    })
+
+    if err != nil {log.Fatal(err)}
+    mavc.OnPos = func(p ws.Pos) {
+        ws.DronePosBroadcast(ws.Pos{Lat: p.Lat, Lon: p.Lon});
+    }
 
 	mux := http.NewServeMux()
+
+    droneHandler := handler.NewDrone(mavc)
+    mux.HandleFunc("/drone/goto", droneHandler.Goto)
+    mux.HandleFunc("/drone/mission", droneHandler.Mission)
 
 	testHandler := handler.TestHandler{DB: db}
 	router.TestRouter(mux, testHandler)

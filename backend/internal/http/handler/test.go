@@ -28,15 +28,9 @@ func (h TestHandler) List(w http.ResponseWriter, r *http.Request) {
     }
     defer rows.Close()
 
-    out := make([]TestRow, 0, 16)
-    for rows.Next() {
-        var t TestRow
-        if err := rows.Scan(&t.ID, &t.Test); err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
-        out = append(out, t)
-    }
+
+
+    out := TestRow{1, "test"}
     writeJSON(w, out, http.StatusOK)
 }
 

@@ -1,20 +1,38 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { GoogleMap, AdvancedMarker } from 'vue3-google-map'
+import { ref, onMounted, onBeforeUnmount, computed} from 'vue'
+import { GoogleMap, AdvancedMarker, Polyline } from 'vue3-google-map'
 import { getCurrentPoint } from '@/services/points.js'
 import { useWebSocket } from '@/composables/useWebSocket'
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY
 const wsBaseUrl = import.meta.env.VITE_API_BASE_WS
-const targetPos = ref(null);
+const httpBaseUrl = import.meta.env.VITE_API_BASE
 const dronePos = ref(null);
-dronePos.value = { lat: 46.53834103516799, lng: 29.84049779990818 };
+const targetPos = ref(null);
 
-function onRightClick(e) {
+const pathPts = ref([]);
+
+async function onRightClick(e) {
     e.domEvent?.preventDefault?.()
     targetPos.value = { lat: e.latLng.lat(), lng: e.latLng.lng() }
+
+    pathPts.value.push({
+        lat: e.latLng.lat(),
+        lng: e.latLng.lng()
+    })
+
     emit('update:point', targetPos.value)
 }
+
+const polyOpts = computed(() => {
+    return {
+        path: pathPts.value.slice(),
+        geodesic: true,
+        strokeColor: '#FF0000',
+        strokeOpacity: 1,
+        strokeWeight: 2,
+    }
+})
 
 const props = defineProps({
     point: Object
@@ -24,6 +42,10 @@ const {send, close} = useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
     dronePos.value = { lat: null, lng: null };
     dronePos.value.lat = data.lat;
     dronePos.value.lng = data.lon;
+
+    pathPts.value[0] = { lat: null, lng: null };
+    pathPts.value[0].lat = data.lat;
+    pathPts.value[0].lng = data.lon;
 });
 
 onBeforeUnmount(() => {
@@ -50,6 +72,10 @@ const emit = defineEmits(['update:point']);
                 <img src="/drone.png" style="height: 25px; width: 25px;"/>
             </template>
         </AdvancedMarker>
+
+        <Polyline
+            :options="polyOpts"
+        />
     </GoogleMap>
 </template>
 
