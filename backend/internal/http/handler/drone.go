@@ -43,10 +43,10 @@ func (h *Drone) Mission(w http.ResponseWriter, r *http.Request) {
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     defer cancel()
 
-    //if err := h.Nav.RunHardcodedMission(ctx); err != nil {
-    //    http.Error(w, err.Error(), http.StatusBadGateway)
-    //    return
-    //}
+    if err := h.Nav.RunHardcodedMission(ctx); err != nil {
+        http.Error(w, err.Error(), http.StatusBadGateway)
+        return
+    }
 
     if err := h.Nav.StartMission(ctx); err != nil {
         http.Error(w, err.Error(), http.StatusBadGateway)

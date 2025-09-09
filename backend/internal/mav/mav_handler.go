@@ -189,7 +189,7 @@ func (c *Client) RunHardcodedMission(ctx context.Context) (error) {
         {Lat: -35.36214764686344, Lon: 149.1651090448245},
         {Lat: -35.36214764686344, Lon: 149.1661090448245},
         {Lat: -35.36264000000000, Lon: 149.1666000000000},
-        {Lat: -35.36264000000000, Lon: 149.1670000000000},
+        {Lat: -35.36264000000000, Lon: 149.1671000000000},
     }
     if len(wps) == 0 { return errors.New("no waypoints") }
 
@@ -232,14 +232,14 @@ func (c *Client) RunHardcodedMission(ctx context.Context) (error) {
 
     for ev := range c.missionCh {
         switch m := ev.(type) {
-
         case *common.MessageMissionRequest:
             s := int(m.Seq)
+            log.Println("Sent for", s);
 
-            log.Println("Sent point: ", s);
             if s < 0 || s >= len(items) {
                 return fmt.Errorf("bad seq %d", s)
             }
+
             if err := n.WriteMessageAll(items[s]); err != nil {
                 return err
             }
