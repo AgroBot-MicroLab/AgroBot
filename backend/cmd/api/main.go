@@ -41,6 +41,10 @@ func main() {
         ws.DronePosBroadcast(ws.Pos{Lat: p.Lat, Lon: p.Lon});
     }
 
+    mavc.OnMissionReached = func(seq uint16) {
+        log.Println("Reached waypoint!", seq);
+    }
+
 	mux := http.NewServeMux()
 
     droneHandler := handler.NewDrone(mavc)

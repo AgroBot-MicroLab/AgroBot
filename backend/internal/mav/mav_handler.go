@@ -25,8 +25,8 @@ var posMask = common.POSITION_TARGET_TYPEMASK_VX_IGNORE |
     common.POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE
 
 type Waypoint struct {
-    Lat float64
-    Lon float64
+    Lat float64 `json:"lat"`
+    Lon float64 `json:"lng"`
 }
 
 type Options struct {
@@ -122,7 +122,6 @@ func (c *Client) readLoop() {
                  *common.MessageMissionAck,
                  *common.MessageMissionCount:
 
-                log.Printf("ACK: %T %+v", m, m)
                 select {
                     case c.missionCh <- m:
                     default:
@@ -135,7 +134,7 @@ func (c *Client) readLoop() {
             case *common.MessageCommandAck:
                 select { case c.cmdAckCh <- m: default: }
             default:
-                log.Printf("Unhandled MAVLink message: %T %+v", m, m)
+                //log.Printf("Unhandled MAVLink message: %T %+v", m, m)
 }
     }
 }
@@ -190,12 +189,33 @@ func (c *Client) ClearMissions(ctx context.Context) (error) {
         MissionType:  common.MAV_MISSION_TYPE_MISSION,
     }); err != nil { return err }
 
-    return nil
+    deadline := time.NewTimer(10 * time.Second)
+    defer deadline.Stop()
+
+    for {
+        select {
+        case ev := <-c.missionCh:
+            switch m := ev.(type) {
+            case *common.MessageMissionAck:
+                if m.MissionType != common.MAV_MISSION_TYPE_MISSION {
+                    continue
+                }
+
+                switch m.Type {
+                    case common.MAV_MISSION_ACCEPTED:
+                        log.Println("all previous missions cleared")
+                        return nil
+                }
+            }
+        case <-deadline.C:
+            return fmt.Errorf("mission init timeout")
+        case <-ctx.Done():
+            return ctx.Err()
+        }
+    }
 }
 
 func (c *Client) InitMission(ctx context.Context, ptsCount uint16) (error) {
-    c.ClearMissions(ctx)
-
     c.mu.RLock()
     n := c.node
     sys := c.opts.TargetSystem
@@ -356,6 +376,14 @@ func (c *Client) StartMission(ctx context.Context) error {
     if err := n.WriteMessageAll(&common.MessageSetMode{
         TargetSystem: sys,
         BaseMode:     common.MAV_MODE(common.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | common.MAV_MODE_FLAG_AUTO_ENABLED),
+        CustomMode:   4,
+    }); err != nil {
+        return err
+    }
+
+    if err := n.WriteMessageAll(&common.MessageSetMode{
+        TargetSystem: sys,
+        BaseMode:     common.MAV_MODE(common.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | common.MAV_MODE_FLAG_AUTO_ENABLED),
         CustomMode:   10,
     }); err != nil {
         return err
@@ -378,6 +406,3 @@ func (c *Client) StartMission(ctx context.Context) error {
 
     return nil
 }
-
-
-

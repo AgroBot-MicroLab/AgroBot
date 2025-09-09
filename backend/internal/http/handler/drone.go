@@ -14,6 +14,7 @@ type Navigator interface {
     SendGoto(lat, lon float64) error
     UploadMission(ctx context.Context, wpt []mav.Waypoint) error
     StartMission(ctx context.Context) error
+    ClearMissions(ctx context.Context) error
 }
 
 type Drone struct {
@@ -28,7 +29,7 @@ func NewDrone(nav Navigator) *Drone {
 func (h *Drone) Goto(w http.ResponseWriter, r *http.Request) {
     var req struct {
         Lat float64 `json:"lat"`
-        Lon float64 `json:"lon"`
+        Lon float64 `json:"lng"`
     }
 
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -46,11 +47,20 @@ func (h *Drone) Mission(w http.ResponseWriter, r *http.Request) {
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     defer cancel()
 
-    wps := []mav.Waypoint{
-        {Lat: -35.36214764686344, Lon: 149.1651090448245},
-        {Lat: -35.36214764686344, Lon: 149.1661090448245},
-        {Lat: -35.36264000000000, Lon: 149.1666000000000},
-        {Lat: -35.36264000000000, Lon: 149.1671000000000},
+    var wps []mav.Waypoint
+    if err := json.NewDecoder(r.Body).Decode(&wps); err != nil {
+        http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    if len(wps) == 0 {
+        http.Error(w, "no waypoints provided", http.StatusBadRequest)
+        return
+    }
+
+    if err := h.Nav.ClearMissions(ctx); err != nil {
+        http.Error(w, err.Error(), http.StatusBadGateway)
+        return
     }
 
     if err := h.Nav.InitMission(ctx, uint16(len(wps))); err != nil {

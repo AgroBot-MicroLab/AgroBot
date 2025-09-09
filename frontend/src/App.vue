@@ -3,18 +3,16 @@ import Map from './components/Map.vue'
 import Sidebar from './components/Sidebar.vue'
 import { ref } from 'vue'
 
-const point = ref(null);
-
 </script>
 
 <template>
     <div class="layout">
         <div class="map">
-            <Map v-model:point="point" />
+            <Map />
         </div>
 
         <div class="sidebar">
-            <Sidebar :point="point" />
+            <Sidebar />
         </div>
     </div>
 </template>

@@ -1,27 +1,20 @@
 <script setup>
+import { useMission } from '@/composables/useMission'
+const { dronePos, targetPos, pathPts, clearPath } = useMission()
 
 const httpBaseUrl = import.meta.env.VITE_API_BASE
-const props = defineProps({
-    point: {
-        type: Object,
-        default: null
-    }
-})
-
-async function onGo() {
-    const res = await fetch(`${httpBaseUrl}/drone/goto`, {
+async function startMission() {
+    await fetch(`${httpBaseUrl}/drone/mission`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            lat: props.point.lat,
-            lon: props.point.lng,
-        })
+        body: JSON.stringify(pathPts.value)
     })
 }
 
 </script>
 
 <template>
-    <p>{{ point }}</p>
-    <button @click="onGo()">Go</button>
+    {{ targetPos }}
+    <button @click="startMission()">Start Mission</button>
+    <button @click="clearPath()">Clear</button>
 </template>

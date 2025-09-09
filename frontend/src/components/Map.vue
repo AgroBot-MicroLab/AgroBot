@@ -1,59 +1,32 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed} from 'vue'
+import { computed, onBeforeUnmount } from 'vue'
 import { GoogleMap, AdvancedMarker, Polyline } from 'vue3-google-map'
-import { getCurrentPoint } from '@/services/points.js'
 import { useWebSocket } from '@/composables/useWebSocket'
+import { useMission } from '@/composables/useMission'
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY
 const wsBaseUrl = import.meta.env.VITE_API_BASE_WS
-const httpBaseUrl = import.meta.env.VITE_API_BASE
-const dronePos = ref(null);
-const targetPos = ref(null);
 
-const pathPts = ref([]);
+const { dronePos, targetPos, pathPts, setDronePos, addTarget } = useMission()
 
-async function onRightClick(e) {
+function onRightClick(e) {
     e.domEvent?.preventDefault?.()
-    targetPos.value = { lat: e.latLng.lat(), lng: e.latLng.lng() }
-
-    pathPts.value.push({
-        lat: e.latLng.lat(),
-        lng: e.latLng.lng()
-    })
-
-    emit('update:point', targetPos.value)
+    addTarget(e.latLng.lat(), e.latLng.lng())
 }
 
-const polyOpts = computed(() => {
-    return {
-        path: pathPts.value.slice(),
-        geodesic: true,
-        strokeColor: '#FF0000',
-        strokeOpacity: 1,
-        strokeWeight: 2,
-    }
+const polyOpts = computed(() => ({
+    path: pathPts.value.slice(),
+    geodesic: true,
+    strokeColor: '#FF0000',
+    strokeOpacity: 1,
+    strokeWeight: 2,
+}))
+
+const { close } = useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
+    setDronePos(data.lat, data.lon)
 })
 
-const props = defineProps({
-    point: Object
-})
-
-const {send, close} = useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
-    dronePos.value = { lat: null, lng: null };
-    dronePos.value.lat = data.lat;
-    dronePos.value.lng = data.lon;
-
-    pathPts.value[0] = { lat: null, lng: null };
-    pathPts.value[0].lat = data.lat;
-    pathPts.value[0].lng = data.lon;
-});
-
-onBeforeUnmount(() => {
-    close();
-});
-
-const emit = defineEmits(['update:point']);
-
+onBeforeUnmount(close)
 </script>
 
 <template>
@@ -67,15 +40,12 @@ const emit = defineEmits(['update:point']);
         @rightclick="onRightClick"
     >
         <AdvancedMarker v-if="targetPos" :options="{ position: targetPos }" />
-        <AdvancedMarker :options="{ position: dronePos }">
+        <AdvancedMarker v-if="dronePos" :options="{ position: dronePos }">
             <template #content>
-                <img src="/drone.png" style="height: 25px; width: 25px;"/>
+                <img src="/drone.png" style="height:25px;width:25px;transform:translate(0%,50%);" />
             </template>
         </AdvancedMarker>
-
-        <Polyline
-            :options="polyOpts"
-        />
+        <Polyline :options="polyOpts" />
     </GoogleMap>
 </template>
 
