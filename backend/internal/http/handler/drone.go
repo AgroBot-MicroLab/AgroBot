@@ -5,12 +5,15 @@ import (
     "net/http"
     "time"
     "context"
+
+    "agro-bot/internal/mav"
 )
 
 type Navigator interface {
+    InitMission(ctx context.Context, ptsCount uint16) error
     SendGoto(lat, lon float64) error
-    RunHardcodedMission(ctx context.Context) (error)
-    StartMission(ctx context.Context) (error)
+    UploadMission(ctx context.Context, wpt []mav.Waypoint) error
+    StartMission(ctx context.Context) error
 }
 
 type Drone struct {
@@ -43,7 +46,19 @@ func (h *Drone) Mission(w http.ResponseWriter, r *http.Request) {
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     defer cancel()
 
-    if err := h.Nav.RunHardcodedMission(ctx); err != nil {
+    wps := []mav.Waypoint{
+        {Lat: -35.36214764686344, Lon: 149.1651090448245},
+        {Lat: -35.36214764686344, Lon: 149.1661090448245},
+        {Lat: -35.36264000000000, Lon: 149.1666000000000},
+        {Lat: -35.36264000000000, Lon: 149.1671000000000},
+    }
+
+    if err := h.Nav.InitMission(ctx, uint16(len(wps))); err != nil {
+        http.Error(w, err.Error(), http.StatusBadGateway)
+        return
+    }
+
+    if err := h.Nav.UploadMission(ctx, wps); err != nil {
         http.Error(w, err.Error(), http.StatusBadGateway)
         return
     }

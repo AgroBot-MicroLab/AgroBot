@@ -135,7 +135,7 @@ func (c *Client) readLoop() {
             case *common.MessageCommandAck:
                 select { case c.cmdAckCh <- m: default: }
             default:
-                //log.Printf("Unhandled MAVLink message: %T %+v", m, m)
+                log.Printf("Unhandled MAVLink message: %T %+v", m, m)
 }
     }
 }
@@ -163,7 +163,7 @@ func (c *Client) SendGoto(lat, lon float64) error {
         return errors.New("node not initialized")
     }
 
-    const typeMaskPositionOnly uint16 = 4088 // ignore v*, a*, yaw, yaw_rate
+    const typeMaskPositionOnly uint16 = 4088
 
     msg := &common.MessageSetPositionTargetGlobalInt{
         TimeBootMs:  0,
@@ -178,21 +178,72 @@ func (c *Client) SendGoto(lat, lon float64) error {
     return n.WriteMessageAll(msg)
 }
 
-func (c *Client) RunHardcodedMission(ctx context.Context) (error) {
+func (c *Client) ClearMissions(ctx context.Context) (error) {
     c.mu.RLock()
     n := c.node
     sys := c.opts.TargetSystem
     c.mu.RUnlock()
     if n == nil { return errors.New("node not initialized") }
 
-    wps := []Waypoint{
-        {Lat: -35.36214764686344, Lon: 149.1651090448245},
-        {Lat: -35.36214764686344, Lon: 149.1661090448245},
-        {Lat: -35.36264000000000, Lon: 149.1666000000000},
-        {Lat: -35.36264000000000, Lon: 149.1671000000000},
-    }
-    if len(wps) == 0 { return errors.New("no waypoints") }
+    if err := n.WriteMessageAll(&common.MessageMissionClearAll{
+        TargetSystem: sys, TargetComponent: 1,
+        MissionType:  common.MAV_MISSION_TYPE_MISSION,
+    }); err != nil { return err }
 
+    return nil
+}
+
+func (c *Client) InitMission(ctx context.Context, ptsCount uint16) (error) {
+    c.ClearMissions(ctx)
+
+    c.mu.RLock()
+    n := c.node
+    sys := c.opts.TargetSystem
+    c.mu.RUnlock()
+    if n == nil { return errors.New("node not initialized") }
+
+
+    if err := n.WriteMessageAll(&common.MessageMissionCount{
+        TargetSystem:    sys,
+        TargetComponent: 1,
+        Count:           ptsCount,
+        MissionType:     common.MAV_MISSION_TYPE_MISSION,
+    }); err != nil { return err }
+
+    deadline := time.NewTimer(10 * time.Second)
+    defer deadline.Stop()
+
+    for {
+        select {
+        case ev := <-c.missionCh:
+            switch m := ev.(type) {
+            case *common.MessageMissionAck:
+                if m.MissionType != common.MAV_MISSION_TYPE_MISSION {
+                    continue
+                }
+
+                switch m.Type {
+                    case common.MAV_MISSION_ACCEPTED:
+                        log.Println("mission upload successful")
+                        return nil
+                }
+            }
+        case <-deadline.C:
+            return fmt.Errorf("mission init timeout")
+        case <-ctx.Done():
+            return ctx.Err()
+        }
+    }
+}
+
+func (c *Client) UploadMission(ctx context.Context, wps []Waypoint) (error) {
+    c.mu.RLock()
+    n := c.node
+    sys := c.opts.TargetSystem
+    c.mu.RUnlock()
+    if n == nil { return errors.New("node not initialized") }
+
+    if len(wps) == 0 { return errors.New("no waypoints") }
     items := make([]*common.MessageMissionItemInt, len(wps))
     for i, p := range wps {
         items[i] = &common.MessageMissionItemInt{
@@ -212,49 +263,42 @@ func (c *Client) RunHardcodedMission(ctx context.Context) (error) {
 
     items[0].Current = 1
 
-    if err := n.WriteMessageAll(&common.MessageMissionClearAll{
-        TargetSystem: sys, TargetComponent: 1,
-        MissionType:  common.MAV_MISSION_TYPE_MISSION,
-    }); err != nil { return err }
-
-    if err := n.WriteMessageAll(&common.MessageMissionCount{
-        TargetSystem: sys,
-        TargetComponent: 1,
-        Count:        uint16(len(items)),
-        MissionType:  common.MAV_MISSION_TYPE_MISSION,
-    }); err != nil { return err }
-
     deadline := time.NewTimer(10 * time.Second)
     defer deadline.Stop()
 
     sent := make([]bool, len(items))
     count := 0
 
-    for ev := range c.missionCh {
-        switch m := ev.(type) {
-        case *common.MessageMissionRequest:
-            s := int(m.Seq)
-            log.Println("Sent for", s);
+    for {
+        select {
+        case ev := <-c.missionCh:
+            switch m := ev.(type) {
+            case *common.MessageMissionRequest:
+                s := int(m.Seq)
+                log.Println("Sent for", s);
 
-            if s < 0 || s >= len(items) {
-                return fmt.Errorf("bad seq %d", s)
-            }
+                if s < 0 || s >= len(items) {
+                    return fmt.Errorf("bad seq %d", s)
+                }
 
-            if err := n.WriteMessageAll(items[s]); err != nil {
-                return err
-            }
+                if err := n.WriteMessageAll(items[s]); err != nil {
+                    return err
+                }
 
-            if !sent[s] {
-                sent[s] = true
-                count++
-                if count == len(items) {
-                    return nil
+                if !sent[s] {
+                    sent[s] = true
+                    count++
+                    if count == len(items) {
+                        return nil
+                    }
                 }
             }
+        case <-deadline.C:
+            return fmt.Errorf("mode verify timeout")
+        case <-ctx.Done():
+            return ctx.Err()
         }
     }
-
-    return nil
 }
 
 func (c *Client) StartMission(ctx context.Context) error {
@@ -266,16 +310,14 @@ func (c *Client) StartMission(ctx context.Context) error {
         return errors.New("node not initialized")
     }
 
-    // 1) Set current mission index = 0
     if err := n.WriteMessageAll(&common.MessageMissionSetCurrent{
         TargetSystem:    sys,
-        TargetComponent: 1, // MAV_COMP_ID_AUTOPILOT1
+        TargetComponent: 1,
         Seq:             0,
     }); err != nil {
         return err
     }
 
-    // helper to wait for COMMAND_ACK for a specific command
     waitAck := func(cmd common.MAV_CMD, d time.Duration) error {
         t := time.NewTimer(d)
         defer t.Stop()
@@ -297,41 +339,39 @@ func (c *Client) StartMission(ctx context.Context) error {
         }
     }
 
-    // 2) Arm
     if err := n.WriteMessageAll(&common.MessageCommandLong{
         TargetSystem:    sys,
         TargetComponent: 1,
         Command:         common.MAV_CMD_COMPONENT_ARM_DISARM,
         Confirmation:    0,
-        Param1:          1, // arm
+        Param1:          1,
     }); err != nil {
         return err
     }
+
     if err := waitAck(common.MAV_CMD_COMPONENT_ARM_DISARM, 5*time.Second); err != nil {
         return err
     }
 
-    // 3) Switch mode to AUTO (ArduPilot Rover AUTO = custom mode 10)
     if err := n.WriteMessageAll(&common.MessageSetMode{
         TargetSystem: sys,
         BaseMode:     common.MAV_MODE(common.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | common.MAV_MODE_FLAG_AUTO_ENABLED),
-        CustomMode:   10, // Rover: AUTO
+        CustomMode:   10,
     }); err != nil {
         return err
     }
 
-    // Optional: explicitly start mission (many stacks start automatically in AUTO)
-    // Use COMMAND_LONG for an ACKable start signal.
     if err := n.WriteMessageAll(&common.MessageCommandLong{
         TargetSystem:    sys,
         TargetComponent: 1,
         Command:         common.MAV_CMD_MISSION_START,
         Confirmation:    0,
-        Param1:          0, // first item index
-        Param2:          0, // last item (0 means "use planner default"; Rover ignores it)
+        Param1:          0,
+        Param2:          0,
     }); err != nil {
         return err
     }
+
     if err := waitAck(common.MAV_CMD_MISSION_START, 5*time.Second); err != nil {
         return err
     }
