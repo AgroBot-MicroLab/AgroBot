@@ -57,6 +57,9 @@ func main() {
     mux.HandleFunc("/drone/goto", droneHandler.Goto)
     mux.HandleFunc("/drone/mission", droneHandler.Mission)
 
+    imgHandler := handler.ImageHandler{DB: db}
+    router.ImageRouter(mux, imgHandler)
+
 	testHandler := handler.TestHandler{DB: db}
 	router.TestRouter(mux, testHandler)
 

@@ -10,6 +10,7 @@ func ImageRouter(mux *http.ServeMux, h handler.ImageHandler) {
 	mux.HandleFunc("POST /image/{id}", func(w http.ResponseWriter, r *http.Request) {
 		h.Upload(w, r, r.PathValue("id"))
 	})
+
 	mux.HandleFunc("POST /api/image/{id}", func(w http.ResponseWriter, r *http.Request) {
 		h.Upload(w, r, r.PathValue("id"))
 	})
@@ -26,6 +27,7 @@ func ImageRouter(mux *http.ServeMux, h handler.ImageHandler) {
 		}
 		h.Upload(w, r, id)
 	})
+
 	mux.HandleFunc("/api/image/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.NotFound(w, r)
