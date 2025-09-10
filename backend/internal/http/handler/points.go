@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+    "agro-bot/internal"
 )
 
 type PointsHandler struct {
-	DB *sql.DB
+    App *internal.App
 }
 
 type PointsRow struct {
@@ -26,7 +28,7 @@ func (h PointsHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	rows, err := h.DB.QueryContext(ctx, `SELECT * FROM point ORDER BY id DESC LIMIT 1`)
+	rows, err := h.App.DB.QueryContext(ctx, `SELECT * FROM point ORDER BY id DESC LIMIT 1`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -71,7 +73,7 @@ func (h PointsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	err := h.DB.QueryRowContext(ctx, `INSERT INTO point(lat, long)
+	err := h.App.DB.QueryRowContext(ctx, `INSERT INTO point(lat, long)
     VALUES ($1, $2)
     RETURNING id`, in.Lat, in.Long).Scan(&res.ID)
 	if err != nil {

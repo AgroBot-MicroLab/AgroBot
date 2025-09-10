@@ -63,7 +63,7 @@ func main() {
     imgHandler := handler.ImageHandler{App: &app}
     router.ImageRouter(mux, imgHandler)
 
-    pointsHandler := handler.PointsHandler{DB: dbConn}
+    pointsHandler := handler.PointsHandler{App: &app}
     router.PointsRouter(mux, pointsHandler)
 
     droneHandler := handler.DroneHandler{App: &app}
