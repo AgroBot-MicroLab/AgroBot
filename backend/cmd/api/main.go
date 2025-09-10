@@ -28,7 +28,7 @@ func main() {
 	}
 	defer db.Close()
 
-    mqttClient := mqtt.New()
+    mqttClient := mqttclient.New()
 	defer mqttClient.Close()
 
 	mavc, err := mav.New(mav.Options{
