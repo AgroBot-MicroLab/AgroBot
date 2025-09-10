@@ -1,49 +1,55 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { GoogleMap, AdvancedMarker } from 'vue3-google-map'
-import { getCurrentPoint } from '../services/points.js'
+import { computed, onBeforeUnmount } from 'vue'
+import { GoogleMap, AdvancedMarker, Polyline } from 'vue3-google-map'
+import { useWebSocket } from '@/composables/useWebSocket'
+import { useMission } from '@/composables/useMission'
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY
-const targetPos = ref(null);
-const dronePos = ref(null);
-dronePos.value = { lat: 46.53834103516799, lng: 29.84049779990818 };
+const wsBaseUrl = import.meta.env.VITE_API_BASE_WS
 
-onMounted(async () => {
-    const [point] = await getCurrentPoint();
-    targetPos.value = { lat: null, lng: null };
-    targetPos.value.lat = point.latitude;
-    targetPos.value.lng = point.longitude;
-});
+const { dronePos, targetPos, pathPts, setDronePos, addTarget } = useMission()
 
 function onRightClick(e) {
     e.domEvent?.preventDefault?.()
-    pos.value = { lat: e.latLng.lat(), lng: e.latLng.lng() }
-    emit('update:point', pos.value)
+    addTarget(e.latLng.lat(), e.latLng.lng())
 }
 
-const props = defineProps({
-    point: Object
+const polyOpts = computed(() => ({
+    path: pathPts.value.slice(),
+    geodesic: true,
+    strokeColor: '#FF0000',
+    strokeOpacity: 1,
+    strokeWeight: 2,
+}))
+
+useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
+    setDronePos(data.lat, data.lon)
 })
 
-const emit = defineEmits(['update:point']);
+useWebSocket(`${wsBaseUrl}/drone/mission/status`, (data) => {
+    console.log("Mission Reached")
+})
+
+onBeforeUnmount(close)
 </script>
 
 <template>
     <GoogleMap
         :api-key="apiKey"
         map-id="main-map"
-        :center="targetPos || { lat: 46.53834103516799, lng: 29.84049779990818 }"
+        :center="{ lat: -35.363163, lng: 149.1652221 }"
         :zoom="18"
         map-type-id="satellite"
         style="width:100%; height:100vh"
         @rightclick="onRightClick"
     >
         <AdvancedMarker v-if="targetPos" :options="{ position: targetPos }" />
-        <AdvancedMarker :options="{ position: dronePos }">
+        <AdvancedMarker v-if="dronePos" :options="{ position: dronePos }">
             <template #content>
-                <img src="/drone.png" style="height: 25px; width: 25px;"/>
+                <img src="/drone.png" style="height:25px;width:25px;transform:translate(0%,50%);" />
             </template>
         </AdvancedMarker>
+        <Polyline :options="polyOpts" />
     </GoogleMap>
 </template>
 

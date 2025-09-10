@@ -1,13 +1,13 @@
 package main
 
 import (
+	"agro-bot/internal/http/middleware"
+	"agro-bot/internal/mav"
+	"agro-bot/internal/ws"
 	"database/sql"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -36,7 +36,36 @@ func main() {
 	_ = mqttclient.Publish("AgroBot/test", []byte("hello from backend"))
 
 	// === HTTP-роутеры ===
+	mavc, err := mav.New(mav.Options{
+		UDPAddr:         "0.0.0.0:14550",
+		OutSystemID:     255,
+		OutComponentID:  190,
+		TargetSystem:    1,
+		TargetComponent: 1,
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	mavc.OnPos = func(p ws.Pos) {
+		ws.DronePosBroadcast(ws.Pos{Lat: p.Lat, Lon: p.Lon})
+	}
+
+	mavc.OnMissionReached = func(seq uint16) {
+		if mavc.MissionActive && mavc.LastSeq == seq {
+			log.Println("Mission completed")
+			mavc.MissionActive = false
+			mavc.LastSeq = 0
+
+			ws.DroneMissionBroadcast(ws.MissionStatus{Status: true})
+		}
+	}
+
 	mux := http.NewServeMux()
+
+	droneHandler := handler.NewDrone(mavc)
+	mux.HandleFunc("/drone/goto", droneHandler.Goto)
+	mux.HandleFunc("/drone/mission", droneHandler.Mission)
 
 	testHandler := handler.TestHandler{DB: db}
 	router.TestRouter(mux, testHandler)
@@ -45,33 +74,17 @@ func main() {
 	router.ImageRouter(mux, imgHandler)
 	router.DeletePointRouter(mux, imgHandler)
 
-	// Health-check на /
-	// стало — отдельный health endpoint, не конфликтует
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("OK"))
-	})
+	mux.HandleFunc("/drone/position", ws.DronePosHandle)
+	mux.HandleFunc("/drone/mission/status", ws.DroneMissionHandle)
 
-	// === HTTP-сервер ===
-	srv := &http.Server{
-		Addr:              ":8080",
-		Handler:           mux,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	go func() {
-		log.Println("listening on :8080")
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal(err)
-		}
-	}()
-
-	// Грейсфул-шутдаун
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
-
-	log.Println("shutting down...")
-	_ = srv.Close()
+	httphandler := middleware.CorsMiddleware(mux)
+	log.Println("listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", httphandler))
 }
+
+//pointsHandler := handler.PointsHandler{DB: db}
+//router.PointsRouter(mux, pointsHandler)
+
+//imgHandler := handler.ImageHandler{DB: db}
+//router.ImageRouter(mux, imgHandler)
+//router.DeletePointRouter(mux, imgHandler)
