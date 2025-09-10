@@ -22,8 +22,12 @@ const polyOpts = computed(() => ({
     strokeWeight: 2,
 }))
 
-const { close } = useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
+useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
     setDronePos(data.lat, data.lon)
+})
+
+useWebSocket(`${wsBaseUrl}/drone/mission/status`, (data) => {
+    console.log("Mission Reached")
 })
 
 onBeforeUnmount(close)

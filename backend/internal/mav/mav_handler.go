@@ -45,6 +45,9 @@ type Client struct {
     cancel context.CancelFunc
     wg     sync.WaitGroup
 
+    LastSeq       uint16
+    MissionActive bool
+
     missionCh chan any
     cmdAckCh  chan *common.MessageCommandAck
     OnMissionReached func(seq uint16)
@@ -80,13 +83,14 @@ func New(opts Options) (*Client, error) {
         return nil, err
     }
 
-
     ctx, cancel := context.WithCancel(context.Background())
     c := &Client{
         node:   node,
         opts:   opts,
         ctx:    ctx,
         cancel: cancel,
+        LastSeq: 0,
+        MissionActive: false,
     }
     c.wg.Add(1)
     c.missionCh = make(chan any, 64)
@@ -219,6 +223,8 @@ func (c *Client) InitMission(ctx context.Context, ptsCount uint16) (error) {
     c.mu.RLock()
     n := c.node
     sys := c.opts.TargetSystem
+    c.MissionActive = true
+    c.LastSeq = ptsCount - 1
     c.mu.RUnlock()
     if n == nil { return errors.New("node not initialized") }
 

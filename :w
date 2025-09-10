@@ -46,8 +46,6 @@ func main() {
             log.Println("Mission completed")
             mavc.MissionActive = false
             mavc.LastSeq = 0
-
-            ws.DroneMissionBroadcast(ws.MissionStatus{Status: true});
         }
     }
 
@@ -61,7 +59,6 @@ func main() {
 	router.TestRouter(mux, testHandler)
 
     mux.HandleFunc("/drone/position", ws.DronePosHandle)
-    mux.HandleFunc("/drone/mission/status", ws.DroneMissionHandle)
 
     handler := middleware.CorsMiddleware(mux)
 	log.Println("listening on :8080")

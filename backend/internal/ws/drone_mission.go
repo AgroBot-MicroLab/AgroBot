@@ -6,12 +6,11 @@ import (
     "github.com/gorilla/websocket"
 )
 
-type Pos struct {
-    Lat float64 `json:"lat"`
-    Lon float64 `json:"lon"`
+type MissionStatus struct {
+    Status bool `json:"status"`
 }
 
-func DronePosHandle(w http.ResponseWriter, r *http.Request) {
+func DroneMissionHandle(w http.ResponseWriter, r *http.Request) {
     c, err := up.Upgrade(w, r, nil)
     if err != nil {
         http.Error(w, err.Error(), 400)
@@ -24,11 +23,11 @@ func DronePosHandle(w http.ResponseWriter, r *http.Request) {
     conns.Unlock()
 }
 
-func DronePosBroadcast(p Pos) {
-    b, _ := json.Marshal(p)
+func DroneMissionBroadcast(s MissionStatus) {
+    b, _ := json.Marshal(s)
     conns.Lock()
 
-    broadcastTo := conns.groups["/drone/position"]
+    broadcastTo := conns.groups["/drone/mission/status"]
 
     for i := 0; i < len(broadcastTo); {
         if err := broadcastTo[i].WriteMessage(websocket.TextMessage, b); err != nil {
