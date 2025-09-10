@@ -1,6 +1,9 @@
 package main
 
 import (
+	"agro-bot/internal/http/middleware"
+	"agro-bot/internal/mav"
+	"agro-bot/internal/ws"
 	"database/sql"
 	"log"
 	"net/http"
@@ -10,11 +13,8 @@ import (
 
 	"agro-bot/internal/http/handler"
 	"agro-bot/internal/http/router"
-	"agro-bot/internal/http/middleware"
-	"agro-bot/internal/ws"
-    "agro-bot/internal/mav"
+	"agro-bot/internal/mqttclient"
 )
-
 
 func main() {
 	dsn := os.Getenv("DATABASE_URL")
@@ -28,34 +28,44 @@ func main() {
 	}
 	defer db.Close()
 
-    mavc, err := mav.New(mav.Options{
-        UDPAddr:         "0.0.0.0:14550",
-        OutSystemID:     255,
-        OutComponentID:  190,
-        TargetSystem:    1,
-        TargetComponent: 1,
-    })
+	// === MQTT ===
+	mqttclient.MustInitFromEnv()
+	defer mqttclient.Close()
 
-    if err != nil {log.Fatal(err)}
-    mavc.OnPos = func(p ws.Pos) {
-        ws.DronePosBroadcast(ws.Pos{Lat: p.Lat, Lon: p.Lon});
-    }
+	// Тестовая публикация при старте
+	_ = mqttclient.Publish("AgroBot/test", []byte("hello from backend"))
 
-    mavc.OnMissionReached = func(seq uint16) {
-        if mavc.MissionActive && mavc.LastSeq == seq {
-            log.Println("Mission completed")
-            mavc.MissionActive = false
-            mavc.LastSeq = 0
+	// === HTTP-роутеры ===
+	mavc, err := mav.New(mav.Options{
+		UDPAddr:         "0.0.0.0:14550",
+		OutSystemID:     255,
+		OutComponentID:  190,
+		TargetSystem:    1,
+		TargetComponent: 1,
+	})
 
-            ws.DroneMissionBroadcast(ws.MissionStatus{Status: true});
-        }
-    }
+	if err != nil {
+		log.Fatal(err)
+	}
+	mavc.OnPos = func(p ws.Pos) {
+		ws.DronePosBroadcast(ws.Pos{Lat: p.Lat, Lon: p.Lon})
+	}
+
+	mavc.OnMissionReached = func(seq uint16) {
+		if mavc.MissionActive && mavc.LastSeq == seq {
+			log.Println("Mission completed")
+			mavc.MissionActive = false
+			mavc.LastSeq = 0
+
+			ws.DroneMissionBroadcast(ws.MissionStatus{Status: true})
+		}
+	}
 
 	mux := http.NewServeMux()
 
-    droneHandler := handler.NewDrone(mavc)
-    mux.HandleFunc("/drone/goto", droneHandler.Goto)
-    mux.HandleFunc("/drone/mission", droneHandler.Mission)
+	droneHandler := handler.NewDrone(mavc)
+	mux.HandleFunc("/drone/goto", droneHandler.Goto)
+	mux.HandleFunc("/drone/mission", droneHandler.Mission)
 
     imgHandler := handler.ImageHandler{DB: db}
     router.ImageRouter(mux, imgHandler)
@@ -63,12 +73,16 @@ func main() {
 	testHandler := handler.TestHandler{DB: db}
 	router.TestRouter(mux, testHandler)
 
-    mux.HandleFunc("/drone/position", ws.DronePosHandle)
-    mux.HandleFunc("/drone/mission/status", ws.DroneMissionHandle)
+	imgHandler := handler.ImageHandler{DB: db}
+	router.ImageRouter(mux, imgHandler)
+	router.DeletePointRouter(mux, imgHandler)
 
-    handler := middleware.CorsMiddleware(mux)
+	mux.HandleFunc("/drone/position", ws.DronePosHandle)
+	mux.HandleFunc("/drone/mission/status", ws.DroneMissionHandle)
+
+	httphandler := middleware.CorsMiddleware(mux)
 	log.Println("listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	log.Fatal(http.ListenAndServe(":8080", httphandler))
 }
 
 //pointsHandler := handler.PointsHandler{DB: db}
