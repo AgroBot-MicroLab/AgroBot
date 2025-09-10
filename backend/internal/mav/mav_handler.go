@@ -8,12 +8,14 @@ import (
     "time"
     "fmt"
 
-    "agro-bot/internal/ws"
+    "agro-bot/internal/shared"
 
     gomavlib "github.com/bluenviron/gomavlib/v2"
     "github.com/bluenviron/gomavlib/v2/pkg/dialects/ardupilotmega"
     "github.com/bluenviron/gomavlib/v2/pkg/dialects/common"
 )
+
+
 
 var posMask = common.POSITION_TARGET_TYPEMASK_VX_IGNORE |
     common.POSITION_TARGET_TYPEMASK_VY_IGNORE |
@@ -51,7 +53,7 @@ type Client struct {
     missionCh chan any
     cmdAckCh  chan *common.MessageCommandAck
     OnMissionReached func(seq uint16)
-    OnPos func(ws.Pos)
+    OnPos func(shared.Pos)
     OnErr func(error)
 }
 
@@ -112,7 +114,7 @@ func (c *Client) readLoop() {
         switch m := f.Message().(type) {
             case *ardupilotmega.MessageGlobalPositionInt:
                 if c.OnPos != nil {
-                    c.OnPos(ws.Pos{ Lat: float64(m.Lat) / 1e7, Lon: float64(m.Lon) / 1e7, })
+                    c.OnPos(shared.Pos{ Lat: float64(m.Lat) / 1e7, Lon: float64(m.Lon) / 1e7, })
                 }
 
             case *common.MessageHeartbeat:

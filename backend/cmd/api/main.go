@@ -3,30 +3,24 @@ package main
 import (
 	"agro-bot/internal/http/middleware"
 	"agro-bot/internal/mav"
-	"agro-bot/internal/ws"
-	"database/sql"
 	"log"
 	"net/http"
 	"os"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+    "agro-bot/internal"
+    "agro-bot/internal/shared"
 	"agro-bot/internal/http/handler"
+	"agro-bot/internal/http/wshandler"
 	"agro-bot/internal/http/router"
 	"agro-bot/internal/mqttclient"
+	"agro-bot/internal/db"
 )
 
 func main() {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		log.Fatal("DATABASE_URL not set")
-	}
-
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
+    dbConn := db.NewDBConnection()
+    defer dbConn.Close()
 
     mqttClient := mqttclient.New()
 	defer mqttClient.Close()
@@ -39,31 +33,19 @@ func main() {
 		TargetComponent: 1,
 	})
 
+    if err != nil {
+        log.Fatalf("mavlink init failed: %v", err)
+    }
+    defer mavc.Close()
+
+    app := internal.App{ DB: dbConn, MavLinkClient: mavc, MqttClient: mqttClient }
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	mavc.OnPos = func(p ws.Pos) {
-		ws.DronePosBroadcast(ws.Pos{Lat: p.Lat, Lon: p.Lon})
-	}
-
-	mavc.OnMissionReached = func(seq uint16) {
-		if mavc.MissionActive && mavc.LastSeq == seq {
-			log.Println("Mission completed")
-			mavc.MissionActive = false
-			mavc.LastSeq = 0
-
-			ws.DroneMissionBroadcast(ws.MissionStatus{Status: true})
-		}
-	}
-
 	mux := http.NewServeMux()
-
-	droneHandler := handler.NewDrone(mavc)
-	mux.HandleFunc("/drone/goto", droneHandler.Goto)
-	mux.HandleFunc("/drone/mission", droneHandler.Mission)
-
-    mux.HandleFunc("/mqtt/test", func(w http.ResponseWriter, r *http.Request) {
+    mux.HandleFunc("GET /mqtt/test", func(w http.ResponseWriter, r *http.Request) {
 	    mqttUUID := os.Getenv("MQTT_UUID")
         topic := "agro/"+mqttUUID+"/cmd"
         err := mqttClient.Publish(topic, []byte("make_photo"))
@@ -75,20 +57,32 @@ func main() {
         _, _ = w.Write([]byte("hello world"))
     })
 
-    imgHandler := handler.ImageHandler{DB: db}
+    testHandler := handler.TestHandler{App: &app}
+    router.TestRouter(mux, testHandler)
+
+    imgHandler := handler.ImageHandler{App: &app}
     router.ImageRouter(mux, imgHandler)
 
-	testHandler := handler.TestHandler{DB: db}
-	router.TestRouter(mux, testHandler)
+    pointsHandler := handler.PointsHandler{DB: dbConn}
+    router.PointsRouter(mux, pointsHandler)
 
-	mux.HandleFunc("/drone/position", ws.DronePosHandle)
-	mux.HandleFunc("/drone/mission/status", ws.DroneMissionHandle)
+    droneHandler := handler.DroneHandler{App: &app}
+    droneHandlerWS := wshandler.DroneHandlerWS{App: &app}
+    router.DroneRouter(mux, &droneHandler, &droneHandlerWS)
+
+	mavc.OnPos = func(p shared.Pos) {
+		droneHandlerWS.DronePosBroadcast(shared.Pos{Lat: p.Lat, Lon: p.Lon})
+	}
+	mavc.OnMissionReached = func(seq uint16) {
+		if mavc.MissionActive && mavc.LastSeq == seq {
+			mavc.MissionActive = false
+			mavc.LastSeq = 0
+			droneHandlerWS.DroneMissionBroadcast(shared.MissionStatus{Status: true})
+		}
+	}
 
 	httphandler := middleware.CorsMiddleware(mux)
 	log.Println("listening on :8080")
 	log.Fatal(http.ListenAndServe(":8080", httphandler))
 }
 
-//pointsHandler := handler.PointsHandler{DB: db}
-//router.PointsRouter(mux, pointsHandler)
-//router.DeletePointRouter(mux, imgHandler)

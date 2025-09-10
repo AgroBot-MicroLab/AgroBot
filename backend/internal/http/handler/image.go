@@ -2,7 +2,6 @@ package handler
 
 import (
 	"crypto/sha256"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+    "agro-bot/internal"
 )
 
 const (
@@ -21,7 +22,7 @@ const (
 )
 
 type ImageHandler struct {
-	DB *sql.DB
+	App *internal.App
 }
 
 type ImageRecord struct {
@@ -82,7 +83,7 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 	}
 
 	// Транзакция: INSERT images → сохранить файл как <imageID>.<ext> → UPDATE images.path → UPDATE point.image_id
-	tx, err := h.DB.BeginTx(r.Context(), nil)
+	tx, err := h.App.DB.BeginTx(r.Context(), nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -82,36 +82,3 @@ func (h PointsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, res, http.StatusCreated)
 }
 
-// func (h PointsHandler) Get(w http.ResponseWriter, r *http.Request, id int) {
-// 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-// 	defer cancel()
-
-// 	var p PointsRow
-// 	err := h.DB.QueryRowContext(ctx, `SELECT * FROM point WHERE id = $1`, id).Scan(&p.id, &p.lat, &p.long, &p.status, &p.image_id, &p.started_at, &p.finished_at)
-// 	if err == sql.ErrNoRows {
-// 		http.NotFound(w, r)
-// 		return
-// 	}
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// 	writeJSON(w, p, http.StatusOK)
-// }
-
-// func (h PointsHandler) Delete(w http.ResponseWriter, r *http.Request, id int) {
-// 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-// 	defer cancel()
-
-// 	res, err := h.DB.ExecContext(ctx, `DELETE FROM point WHERE id = $1`, id)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// 	n, _ := res.RowsAffected()
-// 	if n == 0 {
-// 		http.NotFound(w, r)
-// 		return
-// 	}
-// 	w.WriteHeader(http.StatusNoContent)
-// }
