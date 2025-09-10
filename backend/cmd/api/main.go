@@ -63,6 +63,18 @@ func main() {
 	mux.HandleFunc("/drone/goto", droneHandler.Goto)
 	mux.HandleFunc("/drone/mission", droneHandler.Mission)
 
+    mux.HandleFunc("/mqtt/test", func(w http.ResponseWriter, r *http.Request) {
+	    mqttUUID := os.Getenv("MQTT_UUID")
+        topic := "agro/"+mqttUUID+"/cmd"
+        err := mqttClient.Publish(topic, []byte("make_photo"))
+        if err != nil {
+            log.Printf("publish error: %v", err)
+        }
+
+        w.Header().Set("Content-Type", "text/plain")
+        _, _ = w.Write([]byte("hello world"))
+    })
+
     imgHandler := handler.ImageHandler{DB: db}
     router.ImageRouter(mux, imgHandler)
 

@@ -11,9 +11,10 @@ services:
       - "8080:8080"
       - "14550:14550/udp"
     environment:
-      - GOTOOLCHAIN=auto
-      - DATABASE_URL=postgres://app:secret@db:5432/appdb?sslmode=disable
-      - UPLOAD_DIR=/var/www/uploads
+      GOTOOLCHAIN: "auto"
+      DATABASE_URL: "postgres://app:secret@db:5432/appdb?sslmode=disable"
+      UPLOAD_DIR: "/var/www/uploads"
+      MQTT_UUID: "2f37308d-ccf8-4685-8329-c164599259ca"
     depends_on:
       db:
         condition: service_healthy
@@ -32,6 +33,7 @@ services:
       VITE_GOOGLE_MAPS_KEY: "AIzaSyCO7jmmpwFItFAlf-v2VVjKpLAmfBSEO8k"
       VITE_API_BASE: "http://localhost:8080"
       VITE_API_BASE_WS: "ws://localhost:8080"
+      MQTT_UUID: "2f37308d-ccf8-4685-8329-c164599259ca"
     command: >
       sh -lc "yarn install --frozen-lockfile &&
               yarn dev --host 0.0.0.0"

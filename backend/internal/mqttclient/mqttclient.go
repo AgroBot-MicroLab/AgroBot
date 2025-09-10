@@ -16,11 +16,11 @@ type MqttClient struct {
 
 func New() *MqttClient {
     broker := "tcp://broker.emqx.io:1883"
-    cid := "agro-bot-mqtt-broker-id"
+    cid := fmt.Sprintf("agro-bot-%d", time.Now().UnixNano())
 
     opts := paho.NewClientOptions().
         AddBroker(broker).
-        SetClientID("agro-bot-mqtt-broker-id").
+        SetClientID(cid).
         SetCleanSession(true).
         SetAutoReconnect(true).
         SetConnectTimeout(5 * time.Second).
