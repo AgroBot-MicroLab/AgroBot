@@ -28,14 +28,9 @@ func main() {
 	}
 	defer db.Close()
 
-	// === MQTT ===
-	mqttclient.MustInitFromEnv()
-	defer mqttclient.Close()
+    mqttClient := mqtt.New()
+	defer mqttClient.Close()
 
-	// Тестовая публикация при старте
-	_ = mqttclient.Publish("AgroBot/test", []byte("hello from backend"))
-
-	// === HTTP-роутеры ===
 	mavc, err := mav.New(mav.Options{
 		UDPAddr:         "0.0.0.0:14550",
 		OutSystemID:     255,
@@ -47,6 +42,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	mavc.OnPos = func(p ws.Pos) {
 		ws.DronePosBroadcast(ws.Pos{Lat: p.Lat, Lon: p.Lon})
 	}
@@ -73,10 +69,6 @@ func main() {
 	testHandler := handler.TestHandler{DB: db}
 	router.TestRouter(mux, testHandler)
 
-	imgHandler := handler.ImageHandler{DB: db}
-	router.ImageRouter(mux, imgHandler)
-	router.DeletePointRouter(mux, imgHandler)
-
 	mux.HandleFunc("/drone/position", ws.DronePosHandle)
 	mux.HandleFunc("/drone/mission/status", ws.DroneMissionHandle)
 
@@ -87,7 +79,4 @@ func main() {
 
 //pointsHandler := handler.PointsHandler{DB: db}
 //router.PointsRouter(mux, pointsHandler)
-
-//imgHandler := handler.ImageHandler{DB: db}
-//router.ImageRouter(mux, imgHandler)
 //router.DeletePointRouter(mux, imgHandler)
