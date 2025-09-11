@@ -73,6 +73,7 @@ func main() {
 		droneHandlerWS.DronePosBroadcast(shared.Pos{Lat: p.Lat, Lon: p.Lon})
 		db.SaveIfChanged(app.DB, p)
 	}
+
 	mavc.OnMissionReached = func(seq uint16) {
 		if mavc.MissionActive && mavc.LastSeq == seq {
 			mavc.MissionActive = false
