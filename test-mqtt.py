@@ -1,7 +1,34 @@
 import argparse
-import time
 import uuid
 import paho.mqtt.client as mqtt
+import os
+import random
+import requests
+from pathlib import Path
+import mimetypes
+
+BASE_URL   = os.getenv("BASE_URL", "http://localhost:8080")
+IMAGES_DIR = Path(os.getenv("IMAGES_DIR", "./images_test"))
+URL = f"{BASE_URL}/image/1"
+
+def pick_image(p: Path) -> Path:
+    imgs = [x for x in p.iterdir() if x.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".gif")]
+    if not imgs:
+        raise RuntimeError(f"No images in {p.resolve()}")
+    return random.choice(imgs)
+
+def send_image():
+    img = pick_image(IMAGES_DIR)
+    ctype = mimetypes.guess_type(img.name)[0] or "application/octet-stream"
+    print(f"POST {URL} <- {img.name} ({ctype})")
+
+    with open(img, "rb") as fh:
+        files = {"image": (img.name, fh, ctype)}
+        resp = requests.post(URL, files=files, timeout=60)
+
+    print("Status:", resp.status_code)
+    print("Response:", resp.text[:500])
+
 
 def run_sub(host, port, topic, qos):
     cid = f"py-sub-{uuid.uuid4().hex[:8]}"
@@ -17,6 +44,7 @@ def run_sub(host, port, topic, qos):
         except Exception:
             payload = msg.payload
         print(f"[sub] {msg.topic} qos={msg.qos}: {payload}")
+        send_image()
 
     c.on_connect = on_connect
     c.on_message = on_message
@@ -50,6 +78,4 @@ def main():
     else:
         run_pub(args.host, args.port, args.topic, args.qos, args.payload, args.retain)
 
-if __name__ == "__main__":
-    main()
-
+main()
