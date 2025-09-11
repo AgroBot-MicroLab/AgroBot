@@ -6,13 +6,13 @@ import (
 	"math"
 	"time"
 
-	"agro-bot/internal/ws"
+	"agro-bot/internal/shared"
 )
 
-func SaveIfChanged(db *sql.DB, pos ws.Pos) {
+func SaveIfChanged(db *sql.DB, pos shared.Pos) {
 	const eps = 1e-6
 
-	go func(pos ws.Pos) {
+	go func(pos shared.Pos) {
 		var lastLat, lastLong float64
 		err := db.QueryRow(
 			`SELECT lat, "long" FROM drone_position ORDER BY id DESC LIMIT 1`,
@@ -41,9 +41,6 @@ func SaveIfChanged(db *sql.DB, pos ws.Pos) {
 				log.Printf("db insert error: %v", err)
 				return
 			}
-			log.Printf("db: inserted new pos lat=%.6f long=%.6f", pos.Lat, pos.Lon)
-		} else {
-			log.Printf("db: unchanged pos lat=%.6f long=%.6f — skipped", pos.Lat, pos.Lon)
 		}
 	}(pos)
 }

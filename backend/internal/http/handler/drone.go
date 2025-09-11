@@ -6,6 +6,7 @@ import (
     "time"
     "context"
 
+    "agro-bot/internal"
     "agro-bot/internal/mav"
 )
 
@@ -17,16 +18,11 @@ type Navigator interface {
     ClearMissions(ctx context.Context) error
 }
 
-type Drone struct {
-    Nav Navigator
+type DroneHandler struct {
+    App *internal.App
 }
 
-
-func NewDrone(nav Navigator) *Drone {
-    return &Drone{Nav: nav}
-}
-
-func (h *Drone) Goto(w http.ResponseWriter, r *http.Request) {
+func (h *DroneHandler) Goto(w http.ResponseWriter, r *http.Request) {
     var req struct {
         Lat float64 `json:"lat"`
         Lon float64 `json:"lng"`
@@ -36,14 +32,14 @@ func (h *Drone) Goto(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "bad json", http.StatusBadRequest); return
     }
 
-    if err := h.Nav.SendGoto(req.Lat, req.Lon); err != nil {
+    if err := h.App.MavLinkClient.SendGoto(req.Lat, req.Lon); err != nil {
         http.Error(w, err.Error(), http.StatusBadGateway); return
     }
 
     w.WriteHeader(http.StatusAccepted)
 }
 
-func (h *Drone) Mission(w http.ResponseWriter, r *http.Request) {
+func (h *DroneHandler) Mission(w http.ResponseWriter, r *http.Request) {
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     defer cancel()
 
@@ -58,27 +54,28 @@ func (h *Drone) Mission(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    if err := h.Nav.ClearMissions(ctx); err != nil {
+    if err := h.App.MavLinkClient.ClearMissions(ctx); err != nil {
         http.Error(w, err.Error(), http.StatusBadGateway)
         return
     }
 
-    if err := h.Nav.InitMission(ctx, uint16(len(wps))); err != nil {
+    if err := h.App.MavLinkClient.InitMission(ctx, uint16(len(wps))); err != nil {
         http.Error(w, err.Error(), http.StatusBadGateway)
         return
     }
 
-    if err := h.Nav.UploadMission(ctx, wps); err != nil {
+    if err := h.App.MavLinkClient.UploadMission(ctx, wps); err != nil {
         http.Error(w, err.Error(), http.StatusBadGateway)
         return
     }
 
-    if err := h.Nav.StartMission(ctx); err != nil {
+    if err := h.App.MavLinkClient.StartMission(ctx); err != nil {
         http.Error(w, err.Error(), http.StatusBadGateway)
         return
     }
 
     w.WriteHeader(http.StatusOK)
 }
+
 
 

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"crypto/sha256"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,15 +12,17 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+    "agro-bot/internal"
 )
 
 const (
-	maxUploadBytes = 20 << 20 // 20 MB
+	maxUploadBytes = 124 * 1024 * 1024 // 124 Mib
 	uploadDir      = "uploads"
 )
 
 type ImageHandler struct {
-	DB *sql.DB
+	App *internal.App
 }
 
 type ImageRecord struct {
@@ -38,14 +39,12 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 		return
 	}
 
-	// {id} в URL — это point_id
 	pointID, err := strconv.ParseInt(pointIDStr, 10, 64)
 	if err != nil || pointID <= 0 {
 		http.Error(w, "invalid point id", http.StatusBadRequest)
 		return
 	}
 
-	// ждём multipart/form-data с полем image
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
 	if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "multipart/form-data") {
 		http.Error(w, "expected multipart/form-data", http.StatusBadRequest)
@@ -63,7 +62,6 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 	}
 	defer file.Close()
 
-	// определить расширение
 	head := make([]byte, 512)
 	n, _ := io.ReadFull(file, head)
 	ctype := http.DetectContentType(head[:n])
@@ -81,8 +79,7 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 		return
 	}
 
-	// Транзакция: INSERT images → сохранить файл как <imageID>.<ext> → UPDATE images.path → UPDATE point.image_id
-	tx, err := h.DB.BeginTx(r.Context(), nil)
+	tx, err := h.App.DB.BeginTx(r.Context(), nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -96,7 +93,6 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 	var imageID int64
 	var capturedAt time.Time
 
-	// если path NOT NULL — используем пустую строку, потом обновим реальным путём
 	if err = tx.QueryRowContext(r.Context(),
 		`INSERT INTO images (path) VALUES ('') RETURNING id, captured_at`,
 	).Scan(&imageID, &capturedAt); err != nil {
@@ -118,7 +114,6 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 	hh := sha256.New()
 	size := int64(0)
 
-	// записываем уже прочитанное
 	if _, e = out.Write(head[:n]); e != nil {
 		err = e
 		http.Error(w, "write error: "+e.Error(), http.StatusInternalServerError)
@@ -127,7 +122,6 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 	_, _ = hh.Write(head[:n])
 	size += int64(n)
 
-	// дописываем остальное
 	wrote, e := io.Copy(io.MultiWriter(out, hh), file)
 	if e != nil {
 		err = e
@@ -136,7 +130,6 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 	}
 	size += wrote
 
-	// обновляем путь в images
 	if _, e = tx.ExecContext(r.Context(),
 		`UPDATE images SET path=$1 WHERE id=$2`, relPath, imageID); e != nil {
 		err = e
@@ -144,7 +137,6 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 		return
 	}
 
-	// ТОЛЬКО таблица point
 	res, e := tx.ExecContext(r.Context(),
 		`UPDATE point SET image_id=$1 WHERE id=$2 AND (image_id IS DISTINCT FROM $1)`,
 		imageID, pointID)
@@ -156,7 +148,6 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 		return
 	}
 	if nrows, _ := res.RowsAffected(); nrows == 0 {
-		// point с таким id не найден → чистим и даём 404
 		_ = os.Remove(relPath)
 		_, _ = tx.ExecContext(r.Context(), `DELETE FROM images WHERE id=$1`, imageID)
 		err = fmt.Errorf("point %d not found", pointID)
@@ -175,7 +166,7 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, pointIDStr 
 	resp := map[string]any{
 		"image_id":    imageID,
 		"point_id":    pointID,
-		"path":        relPath, // uploads/<imageID>.<ext>
+		"path":        relPath,
 		"captured_at": capturedAt.UTC(),
 		"size":        size,
 	}

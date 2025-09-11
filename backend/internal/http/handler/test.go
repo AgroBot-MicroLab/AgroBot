@@ -6,10 +6,12 @@ import (
     "encoding/json"
     "net/http"
     "time"
+
+    "agro-bot/internal"
 )
 
 type TestHandler struct {
-    DB *sql.DB
+    App *internal.App
 }
 
 type TestRow struct {
@@ -21,7 +23,7 @@ func (h TestHandler) List(w http.ResponseWriter, r *http.Request) {
     ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
     defer cancel()
 
-    rows, err := h.DB.QueryContext(ctx, `SELECT id, test FROM test_table ORDER BY id`)
+    rows, err := h.App.DB.QueryContext(ctx, `SELECT id, test FROM test_table ORDER BY id`)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -52,7 +54,7 @@ func (h TestHandler) Create(w http.ResponseWriter, r *http.Request) {
     defer cancel()
 
     var id int
-    err := h.DB.QueryRowContext(ctx, `INSERT INTO test_table(test) VALUES ($1) RETURNING id`, in.Test).Scan(&id)
+    err := h.App.DB.QueryRowContext(ctx, `INSERT INTO test_table(test) VALUES ($1) RETURNING id`, in.Test).Scan(&id)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -65,7 +67,7 @@ func (h TestHandler) Get(w http.ResponseWriter, r *http.Request, id int) {
     defer cancel()
 
     var t TestRow
-    err := h.DB.QueryRowContext(ctx, `SELECT id, test FROM test_table WHERE id = $1`, id).Scan(&t.ID, &t.Test)
+    err := h.App.DB.QueryRowContext(ctx, `SELECT id, test FROM test_table WHERE id = $1`, id).Scan(&t.ID, &t.Test)
     if err == sql.ErrNoRows {
         http.NotFound(w, r)
         return
@@ -93,7 +95,7 @@ func (h TestHandler) Update(w http.ResponseWriter, r *http.Request, id int) {
     ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
     defer cancel()
 
-    res, err := h.DB.ExecContext(ctx, `UPDATE test_table SET test = $1 WHERE id = $2`, in.Test, id)
+    res, err := h.App.DB.ExecContext(ctx, `UPDATE test_table SET test = $1 WHERE id = $2`, in.Test, id)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -110,7 +112,7 @@ func (h TestHandler) Delete(w http.ResponseWriter, r *http.Request, id int) {
     ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
     defer cancel()
 
-    res, err := h.DB.ExecContext(ctx, `DELETE FROM test_table WHERE id = $1`, id)
+    res, err := h.App.DB.ExecContext(ctx, `DELETE FROM test_table WHERE id = $1`, id)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
