@@ -73,6 +73,7 @@ func main() {
 	mavc.OnPos = func(p shared.Pos) {
 		droneHandlerWS.DronePosBroadcast(shared.Pos{Lat: p.Lat, Lon: p.Lon})
 	}
+
 	mavc.OnMissionReached = func(seq uint16) {
 		if mavc.MissionActive && mavc.LastSeq == seq {
 			mavc.MissionActive = false
