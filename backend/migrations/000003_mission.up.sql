@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS mission (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+ALTER TABLE point
+ADD COLUMN IF NOT EXISTS mission_id INT;
+
+ALTER TABLE point
+ADD CONSTRAINT fk_point_mission FOREIGN KEY (mission_id)
+REFERENCES mission(id) ON DELETE CASCADE;
