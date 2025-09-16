@@ -30,9 +30,11 @@ useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
 
 const arrived = ref(false)
 useWebSocket(`${wsBaseUrl}/drone/mission/status`, (data) => {
-    arrived.value = true
-    console.log("Mission reached")
-    clearPath()
+    if (data.is_last){
+        arrived.value = true
+        console.log("Mission reached",data)
+        clearPath()
+    }
 })
 
 onBeforeUnmount(close)
