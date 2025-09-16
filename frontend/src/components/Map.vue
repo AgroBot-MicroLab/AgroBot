@@ -9,7 +9,7 @@ import Modal from './Modal.vue'
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY
 const wsBaseUrl = import.meta.env.VITE_API_BASE_WS
 
-const { dronePos, targetPos, pathPts, setDronePos, addTarget } = useMission()
+const { dronePos, targetPos, pathPts, setDronePos, addTarget, clearPath } = useMission()
 
 function onRightClick(e) {
     e.domEvent?.preventDefault?.()
@@ -32,6 +32,7 @@ const arrived = ref(false)
 useWebSocket(`${wsBaseUrl}/drone/mission/status`, (data) => {
     arrived.value = true
     console.log("Mission reached")
+    clearPath()
 })
 
 onBeforeUnmount(close)
