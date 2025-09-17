@@ -6,9 +6,10 @@ import random
 import requests
 from pathlib import Path
 import mimetypes
+from picamera import make_photo
 
-BASE_URL   = os.getenv("BASE_URL", "http://localhost:8080")
-IMAGES_DIR = Path(os.getenv("IMAGES_DIR", "./images_test"))
+BASE_URL   = os.getenv("BASE_URL", "http://10.120.154.245:8080")
+IMAGES_DIR = Path(os.getenv("IMAGES_DIR", "./"))
 URL = f"{BASE_URL}/image/1"
 
 def pick_image(p: Path) -> Path:
@@ -79,3 +80,4 @@ def main():
         run_pub(args.host, args.port, args.topic, args.qos, args.payload, args.retain)
 
 main()
+

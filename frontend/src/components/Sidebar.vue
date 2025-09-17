@@ -15,7 +15,6 @@ async function startMission() {
 
 <template>
   <div style="margin-left: 30px;">
-    {{ targetPos }}
     <div class="flex gap-2 mt-4">
       <button
         class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all duration-500"
