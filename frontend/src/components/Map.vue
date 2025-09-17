@@ -3,11 +3,13 @@ import { computed, onBeforeUnmount } from 'vue'
 import { GoogleMap, AdvancedMarker, Polyline } from 'vue3-google-map'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useMission } from '@/composables/useMission'
+import { ref } from 'vue'
+import Modal from './Modal.vue'
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY
 const wsBaseUrl = import.meta.env.VITE_API_BASE_WS
 
-const { dronePos, targetPos, pathPts, setDronePos, addTarget } = useMission()
+const { dronePos, targetPos, pathPts, setDronePos, addTarget, clearPath } = useMission()
 
 function onRightClick(e) {
     e.domEvent?.preventDefault?.()
@@ -26,8 +28,11 @@ useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
     setDronePos(data.lat, data.lon)
 })
 
+const arrived = ref(false)
 useWebSocket(`${wsBaseUrl}/drone/mission/status`, (data) => {
-    console.log("Mission Reached")
+    arrived.value = true
+    console.log("Mission reached")
+    clearPath()
 })
 
 onBeforeUnmount(close)
@@ -51,5 +56,6 @@ onBeforeUnmount(close)
         </AdvancedMarker>
         <Polyline :options="polyOpts" />
     </GoogleMap>
+    <Modal v-if="arrived" @close="arrived = false" />
 </template>
 

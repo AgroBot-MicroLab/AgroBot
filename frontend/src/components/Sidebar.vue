@@ -23,12 +23,6 @@ async function startMission() {
         Start Mission
       </button>
 
-      <button
-        class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-500"
-        @click="clearPath()"
-      >
-        Clear
-      </button>
     </div>
   </div>
 </template>
