@@ -1,14 +1,13 @@
 package internal
 
 import (
-	"database/sql"
 	"agro-bot/internal/mav"
 	"agro-bot/internal/mqttclient"
+	"database/sql"
 )
 
 type App struct {
 	DB            *sql.DB
-    MavLinkClient *mav.Client
-    MqttClient    *mqttclient.MqttClient
+	MavLinkClient *mav.Client
+	MqttClient    *mqttclient.MqttClient
 }
-

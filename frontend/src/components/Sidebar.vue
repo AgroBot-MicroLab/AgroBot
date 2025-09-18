@@ -1,5 +1,5 @@
 <script setup>
-import {ref} from "vue"
+import {ref, onMounted} from "vue"
 import { useMission } from '@/composables/useMission'
 const { dronePos, targetPos, pathPts, clearPath } = useMission()
 
@@ -24,6 +24,16 @@ async function stopMission() {
     clearPath()
 }
 
+
+onMounted(() => {
+  const ws = new WebSocket("ws://localhost:8080/drone/mission/status")
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data)
+    console.log("Mission status update:", data)
+    missionActive.value = data.status
+  }
+})
 
 </script>
 
