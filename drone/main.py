@@ -46,6 +46,7 @@ def run_sub(host, port, topic, qos):
             payload = msg.payload
         print(f"[sub] {msg.topic} qos={msg.qos}: {payload}")
         send_image()
+        make_photo()
 
     c.on_connect = on_connect
     c.on_message = on_message
