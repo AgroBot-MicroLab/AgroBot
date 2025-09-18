@@ -18,16 +18,13 @@ import (
 	"agro-bot/internal/shared"
 )
 
-func sendImage(mqttClient mqttclient.MqttClient, w http.ResponseWriter) {
+func makePhoto(mqttClient *mqttclient.MqttClient) {
     mqttUUID := os.Getenv("MQTT_UUID")
     topic := "agro/" + mqttUUID + "/cmd"
     err := mqttClient.Publish(topic, []byte("make_photo"))
     if err != nil {
         log.Printf("publish error: %v", err)
     }
-
-    w.Header().Set("Content-Type", "text/plain")
-    _, _ = w.Write([]byte("hello world"))
 }
 
 func main() {
@@ -81,6 +78,7 @@ func main() {
 			mavc.MissionActive = false
 			mavc.LastSeq = 0
 			isLast = true
+            makePhoto(mqttClient)
 		}
 		droneHandlerWS.DroneMissionBroadcast(shared.MissionStatus{WaypointId: seq, IsLast: isLast})
 	}
