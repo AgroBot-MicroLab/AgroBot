@@ -1,6 +1,9 @@
 <script setup>
+import {ref} from "vue"
 import { useMission } from '@/composables/useMission'
 const { dronePos, targetPos, pathPts, clearPath } = useMission()
+
+const missionActive = ref(false)
 
 const httpBaseUrl = import.meta.env.VITE_API_BASE
 async function startMission() {
@@ -9,7 +12,18 @@ async function startMission() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(pathPts.value)
     })
+    missionActive.value = true 
 }
+
+async function stopMission() {
+    await fetch(`${httpBaseUrl}/drone/mission`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" }
+    })
+    missionActive.value = false
+    clearPath()
+}
+
 
 </script>
 
@@ -17,12 +31,19 @@ async function startMission() {
   <div style="margin-left: 30px;">
     <div class="flex gap-2 mt-4">
       <button
+        v-show="!missionActive"
         class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all duration-500"
         @click="startMission()"
       >
         Start Mission
       </button>
-
+<button
+        v-show="missionActive"
+        class="bg-gradient-to-r from-red-500 to-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-red-600 hover:to-red-800 transition-all duration-500"
+        @click="stopMission()"
+      >
+        Stop Mission
+      </button>
     </div>
   </div>
 </template>

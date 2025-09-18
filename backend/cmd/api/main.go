@@ -76,11 +76,13 @@ func main() {
 	}
 
 	mavc.OnMissionReached = func(seq uint16) {
+		isLast := false
 		if mavc.MissionActive && mavc.LastSeq == seq {
 			mavc.MissionActive = false
 			mavc.LastSeq = 0
-			droneHandlerWS.DroneMissionBroadcast(shared.MissionStatus{Status: true})
+			isLast = true
 		}
+		droneHandlerWS.DroneMissionBroadcast(shared.MissionStatus{WaypointId: seq, IsLast: isLast})
 	}
 
 	httphandler := middleware.CorsMiddleware(mux)
