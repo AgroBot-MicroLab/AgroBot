@@ -18,6 +18,15 @@ import (
 	"agro-bot/internal/shared"
 )
 
+func makePhoto(mqttClient *mqttclient.MqttClient) {
+    mqttUUID := os.Getenv("MQTT_UUID")
+    topic := "agro/" + mqttUUID + "/cmd"
+    err := mqttClient.Publish(topic, []byte("make_photo"))
+    if err != nil {
+        log.Printf("publish error: %v", err)
+    }
+}
+
 func main() {
 	dbConn := db.NewDBConnection()
 	defer dbConn.Close()
@@ -41,17 +50,6 @@ func main() {
 	app := internal.App{DB: dbConn, MavLinkClient: mavc, MqttClient: mqttClient}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /mqtt/test", func(w http.ResponseWriter, r *http.Request) {
-		mqttUUID := os.Getenv("MQTT_UUID")
-		topic := "agro/" + mqttUUID + "/cmd"
-		err := mqttClient.Publish(topic, []byte("make_photo"))
-		if err != nil {
-			log.Printf("publish error: %v", err)
-		}
-
-		w.Header().Set("Content-Type", "text/plain")
-		_, _ = w.Write([]byte("hello world"))
-	})
 
 	testHandler := handler.TestHandler{App: &app}
 	router.TestRouter(mux, testHandler)
@@ -80,6 +78,7 @@ func main() {
 			mavc.MissionActive = false
 			mavc.LastSeq = 0
 			isLast = true
+            makePhoto(mqttClient)
 		}
 		droneHandlerWS.DroneMissionBroadcast(shared.MissionStatus{WaypointId: seq, IsLast: isLast})
 	}
