@@ -19,12 +19,12 @@ import (
 )
 
 func makePhoto(mqttClient *mqttclient.MqttClient) {
-    mqttUUID := os.Getenv("MQTT_UUID")
-    topic := "agro/" + mqttUUID + "/cmd"
-    err := mqttClient.Publish(topic, []byte("make_photo"))
-    if err != nil {
-        log.Printf("publish error: %v", err)
-    }
+	mqttUUID := os.Getenv("MQTT_UUID")
+	topic := "agro/" + mqttUUID + "/cmd"
+	err := mqttClient.Publish(topic, []byte("make_photo"))
+	if err != nil {
+		log.Printf("publish error: %v", err)
+	}
 }
 
 func main() {
@@ -68,7 +68,11 @@ func main() {
 	router.MissionRouter(mux, &missionHandler)
 
 	mavc.OnPos = func(p shared.Pos) {
-		droneHandlerWS.DronePosBroadcast(shared.Pos{Lat: p.Lat, Lon: p.Lon})
+		droneHandlerWS.DronePosBroadcast(shared.Pos{
+			Lat: p.Lat,
+			Lon: p.Lon,
+			Yaw: p.Yaw,
+		})
 		db.SaveIfChanged(app.DB, p)
 	}
 
@@ -78,7 +82,7 @@ func main() {
 			mavc.MissionActive = false
 			mavc.LastSeq = 0
 			isLast = true
-            makePhoto(mqttClient)
+			makePhoto(mqttClient)
 		}
 		droneHandlerWS.DroneMissionBroadcast(shared.MissionStatus{WaypointId: seq, IsLast: isLast})
 	}

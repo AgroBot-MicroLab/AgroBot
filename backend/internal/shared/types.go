@@ -8,4 +8,5 @@ type MissionStatus struct {
 type Pos struct {
 	Lat float64 `json:"lat"`
 	Lon float64 `json:"lon"`
+	Yaw float64 `json:"yaw"`
 }

@@ -25,7 +25,8 @@ const polyOpts = computed(() => ({
 }))
 
 useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
-    setDronePos(data.lat, data.lon)
+    setDronePos(data.lat, data.lon, data.yaw)
+    console.log("Drone position update:", data)
 })
 
 const arrived = ref(false)
@@ -53,7 +54,11 @@ onBeforeUnmount(close)
         <AdvancedMarker v-if="targetPos" :options="{ position: targetPos }" />
         <AdvancedMarker v-if="dronePos" :options="{ position: dronePos }">
             <template #content>
-                <img src="/drone.png" style="height:25px;width:25px;transform:translate(0%,50%);" />
+                <img 
+                    src="/drone.png" 
+                    style="height:40px;width:40px"
+                    :style="{ transform: `translate(0%,50%) rotate(${dronePos.yaw+180}deg)` }" 
+                />
             </template>
         </AdvancedMarker>
         <Polyline :options="polyOpts" />
