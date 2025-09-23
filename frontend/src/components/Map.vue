@@ -26,7 +26,6 @@ const polyOpts = computed(() => ({
 
 useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
     setDronePos(data.lat, data.lon, data.yaw)
-    console.log("Drone position update:", data)
 })
 
 const arrived = ref(false)

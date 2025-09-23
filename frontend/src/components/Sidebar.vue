@@ -7,12 +7,14 @@ const missionActive = ref(false)
 
 const httpBaseUrl = import.meta.env.VITE_API_BASE
 async function startMission() {
-    await fetch(`${httpBaseUrl}/drone/mission`, {
+  const res = await fetch(`${httpBaseUrl}/drone/mission`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(pathPts.value)
     })
+    const data = await res.json()
     missionActive.value = true 
+    console.log(data)
 }
 
 async function stopMission() {

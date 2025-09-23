@@ -6,9 +6,9 @@ import random
 import requests
 from pathlib import Path
 import mimetypes
-from picamera import make_photo
+#from picamera import make_photo
 
-BASE_URL   = os.getenv("BASE_URL", "http://10.120.154.245:8080")
+BASE_URL   = os.getenv("BASE_URL", "http://localhost:8080")
 IMAGES_DIR = Path(os.getenv("IMAGES_DIR", "./"))
 URL = f"{BASE_URL}/image/1"
 
@@ -46,7 +46,7 @@ def run_sub(host, port, topic, qos):
             payload = msg.payload
         print(f"[sub] {msg.topic} qos={msg.qos}: {payload}")
         send_image()
-        make_photo()
+        #make_photo()
 
     c.on_connect = on_connect
     c.on_message = on_message

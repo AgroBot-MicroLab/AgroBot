@@ -1,0 +1,8 @@
+ALTER TABLE images
+ADD COLUMN IF NOT EXISTS mission_id INT;
+
+ALTER TABLE images
+ADD CONSTRAINT fk_images_mission
+FOREIGN KEY (mission_id)
+REFERENCES mission(id)
+ON DELETE CASCADE;

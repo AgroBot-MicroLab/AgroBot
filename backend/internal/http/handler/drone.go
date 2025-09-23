@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"agro-bot/internal"
+	"agro-bot/internal/db"
 	"agro-bot/internal/mav"
 )
 
@@ -21,6 +22,9 @@ type Navigator interface {
 
 type DroneHandler struct {
 	App *internal.App
+}
+type MissionResponse struct {
+	MissionID int `json:"mission_id"`
 }
 
 func (h *DroneHandler) Goto(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +81,18 @@ func (h *DroneHandler) Mission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	missionID, err := db.CreateMission(h.App.DB)
+	if err != nil {
+		http.Error(w, "failed to create mission", http.StatusInternalServerError)
+		return
+	}
+
+	resp := MissionResponse{MissionID: missionID}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(resp)
 }
 func (h *DroneHandler) StopMission(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
