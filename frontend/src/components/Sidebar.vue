@@ -8,29 +8,29 @@ const { pathPts, clearPath } = useMission();
 const missionStore = useMissionStore();
 
 const missionActive = ref(false);
-const API = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+const httpBaseUrl = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
 async function startMission() {
-  await fetch(`${API}/drone/mission`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(pathPts.value),
-  });
-  missionActive.value = true;
+    await fetch(`${httpBaseUrl}/drone/mission`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pathPts.value)
+    })
+    missionActive.value = true 
 }
 
 async function stopMission() {
-  await fetch(`${API}/drone/mission`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-  });
-  missionActive.value = false;
-  clearPath();
+    await fetch(`${httpBaseUrl}/drone/mission`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" }
+    })
+    missionActive.value = false
+    clearPath()
 }
 
 async function runMission(id) {
   const points = await fetchMissionPoints(id);
-  await fetch(`${API}/drone/mission`, {
+  await fetch(`${httpBaseUrl}/drone/mission`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(points),
@@ -38,22 +38,32 @@ async function runMission(id) {
 }
 
 onMounted(() => missionStore.loadMissions());
+onMounted(() => {
+  const ws = new WebSocket("ws://localhost:8080/drone/mission/status")
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data)
+    console.log("Mission status update:", data)
+    missionActive.value = data.status
+  }
+})
+
 </script>
 
 <template>
   <div class="flex gap-6 mt-6 ml-6">
     <div>
       <button
-          v-show="!missionActive"
-          class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all duration-500"
-          @click="startMission"
+        v-show="!missionActive"
+        class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all duration-500"
+        @click="startMission()"
       >
         Start Mission
       </button>
-      <button
-          v-show="missionActive"
-          class="bg-gradient-to-r from-red-500 to-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-red-600 hover:to-red-800 transition-all duration-500"
-          @click="stopMission"
+<button
+        v-show="missionActive"
+        class="bg-gradient-to-r from-red-500 to-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-red-600 hover:to-red-800 transition-all duration-500"
+        @click="stopMission()"
       >
         Stop Mission
       </button>

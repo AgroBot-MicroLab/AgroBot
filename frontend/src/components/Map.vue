@@ -37,24 +37,27 @@ useWebSocket(`${wsBaseUrl}/drone/mission/status`, (data) => {
 </script>
 
 <template>
-  <GoogleMap
-      :api-key="apiKey"
-      language="en"
-      region="US"
-      map-id="main-map"
-      :center="{ lat: -35.363163, lng: 149.1652221 }"
-      :zoom="18"
-      map-type-id="satellite"
-      style="width:100%; height:100vh"
-      @rightclick="onRightClick"
-  >
-    <AdvancedMarker v-if="targetPos" :options="{ position: targetPos }" />
-    <AdvancedMarker v-if="dronePos" :options="{ position: dronePos }">
-      <template #content>
-        <img src="/drone.png" style="height:25px;width:25px;transform:translate(0%,50%);" />
-      </template>
-    </AdvancedMarker>
-    <Polyline :options="polyOpts" />
-  </GoogleMap>
-  <Modal v-if="arrived" @close="arrived = false" @saved="arrived = false" />
+    <GoogleMap
+        :api-key="apiKey"
+        map-id="main-map"
+        :center="{ lat: -35.363163, lng: 149.1652221 }"
+        :zoom="18"
+        map-type-id="satellite"
+        style="width:100%; height:100vh"
+        @rightclick="onRightClick"
+    >
+        <AdvancedMarker v-if="targetPos" :options="{ position: targetPos }" />
+        <AdvancedMarker v-if="dronePos" :options="{ position: dronePos }">
+            <template #content>
+                <img
+                    src="/drone.png"
+                    style="height:40px;width:40px"
+                    :style="{ transform: `translate(0%,50%) rotate(${dronePos.yaw+180}deg)` }"
+                />
+            </template>
+        </AdvancedMarker>
+        <Polyline :options="polyOpts" />
+    </GoogleMap>
+    <Modal v-if="arrived" @close="arrived = false" />
 </template>
+

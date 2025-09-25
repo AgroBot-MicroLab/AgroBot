@@ -114,7 +114,11 @@ func (c *Client) readLoop() {
 		switch m := f.Message().(type) {
 		case *ardupilotmega.MessageGlobalPositionInt:
 			if c.OnPos != nil {
-				c.OnPos(shared.Pos{Lat: float64(m.Lat) / 1e7, Lon: float64(m.Lon) / 1e7})
+				c.OnPos(shared.Pos{
+					Lat: float64(m.Lat) / 1e7,
+					Lon: float64(m.Lon) / 1e7,
+					Yaw: float64(m.Hdg) / 100,
+				})
 			}
 
 		case *common.MessageHeartbeat:
