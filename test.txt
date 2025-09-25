@@ -1,2 +1,0 @@
-- Hand written commands to the drone, i.e manual control
--
