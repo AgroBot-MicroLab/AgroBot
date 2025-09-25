@@ -3,8 +3,8 @@
     <div class="bg-white rounded-lg shadow-lg p-6 w-80 text-center">
       <h2 class="text-xl font-semibold mb-4">Mission reached</h2>
       <p class="mb-4">The drone has reached its destination</p>
-    
-      <img src="https://www.iconpacks.net/icons/2/free-check-mark-icon-3280-thumb.png"
+
+      <img :src="imagePath"
            alt="Check mark"
            class="mx-auto mb-4 w-16 h-16">
 
@@ -18,4 +18,11 @@
 
 <script setup>
 const emit = defineEmits(['close'])
+const props = defineProps({
+  imagePath: {
+    type: String,
+    required: true
+  }
+})
+
 </script>

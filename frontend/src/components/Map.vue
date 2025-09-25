@@ -4,10 +4,11 @@ import { GoogleMap, AdvancedMarker, Polyline } from 'vue3-google-map'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useMission } from '@/composables/useMission'
 import { ref } from 'vue'
-import Modal from './Modal.vue'
+import Modal from '@/components/Modal.vue'
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY
 const wsBaseUrl = import.meta.env.VITE_API_BASE_WS
+const apiBaseUrl = import.meta.env.VITE_API_BASE
 
 const { dronePos, targetPos, pathPts, setDronePos, addTarget, clearPath } = useMission()
 
@@ -26,15 +27,24 @@ const polyOpts = computed(() => ({
 
 useWebSocket(`${wsBaseUrl}/drone/position`, (data) => {
     setDronePos(data.lat, data.lon, data.yaw)
-    console.log("Drone position update:", data)
 })
 
 const arrived = ref(false)
-useWebSocket(`${wsBaseUrl}/drone/mission/status`, (data) => {
-    if (data.is_last){
-        arrived.value = true
-        console.log("Mission reached",data)
-        clearPath()
+const image = ref("")
+
+useWebSocket(`${wsBaseUrl}/drone/mission/status`, (event) => {
+    switch (event.type) {
+        case "waypoint_passed":
+            if (event.data.is_last){
+                arrived.value = true
+                clearPath()
+            }
+            break;
+        case "photo_received":
+            image.value = event.data.path;
+            break;
+        default:
+            break;
     }
 })
 
@@ -54,15 +64,15 @@ onBeforeUnmount(close)
         <AdvancedMarker v-if="targetPos" :options="{ position: targetPos }" />
         <AdvancedMarker v-if="dronePos" :options="{ position: dronePos }">
             <template #content>
-                <img 
-                    src="/drone.png" 
+                <img
+                    src="/drone.png"
                     style="height:40px;width:40px"
-                    :style="{ transform: `translate(0%,50%) rotate(${dronePos.yaw+180}deg)` }" 
+                    :style="{ transform: `translate(0%,50%) rotate(${dronePos.yaw+180}deg)` }"
                 />
             </template>
         </AdvancedMarker>
         <Polyline :options="polyOpts" />
     </GoogleMap>
-    <Modal v-if="arrived" @close="arrived = false" />
+    <Modal v-if="arrived" @close="arrived = false" :imagePath="`${apiBaseUrl}/image/${image}`" />
 </template>
 

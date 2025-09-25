@@ -47,6 +47,7 @@ type Client struct {
 
 	LastSeq       uint16
 	MissionActive bool
+	MissionId 	  int64
 
 	missionCh        chan any
 	cmdAckCh         chan *common.MessageCommandAck

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"encoding/json"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -18,14 +19,31 @@ import (
 	"agro-bot/internal/shared"
 )
 
-func makePhoto(mqttClient *mqttclient.MqttClient) {
-	mqttUUID := os.Getenv("MQTT_UUID")
-	topic := "agro/" + mqttUUID + "/cmd"
-	err := mqttClient.Publish(topic, []byte("make_photo"))
-	if err != nil {
-		log.Printf("publish error: %v", err)
-	}
+type PhotoCommand struct {
+    Command 	 string `json:"command"`
+    MissionId    int64  `json:"mission_id"`
 }
+
+func makePhoto(mqttClient *mqttclient.MqttClient, missionId int64) {
+    mqttUUID := os.Getenv("MQTT_UUID")
+    topic := "agro/" + mqttUUID + "/cmd"
+
+    cmd := PhotoCommand{
+        Command:   "make_photo",
+        MissionId: missionId,
+    }
+
+    payload, err := json.Marshal(cmd)
+    if err != nil {
+        log.Printf("json marshal error: %v", err)
+        return
+    }
+
+    if err := mqttClient.Publish(topic, payload); err != nil {
+        log.Printf("publish error: %v", err)
+    }
+}
+
 
 func main() {
 	dbConn := db.NewDBConnection()
@@ -54,15 +72,15 @@ func main() {
 	testHandler := handler.TestHandler{App: &app}
 	router.TestRouter(mux, testHandler)
 
-	imgHandler := handler.ImageHandler{App: &app}
-	router.ImageRouter(mux, imgHandler)
-
 	pointsHandler := handler.PointsHandler{App: &app}
 	router.PointsRouter(mux, pointsHandler)
 
 	droneHandler := handler.DroneHandler{App: &app}
 	droneHandlerWS := wshandler.DroneHandlerWS{App: &app}
 	router.DroneRouter(mux, &droneHandler, &droneHandlerWS)
+
+	imgHandler := handler.ImageHandler{App: &app, DroneHandlerWs: &droneHandlerWS}
+	router.ImageRouter(mux, imgHandler)
 
 	missionHandler := handler.MissionHandler{App: &app}
 	router.MissionRouter(mux, &missionHandler)
@@ -73,7 +91,6 @@ func main() {
 			Lon: p.Lon,
 			Yaw: p.Yaw,
 		})
-		db.SaveIfChanged(app.DB, p)
 	}
 
 	mavc.OnMissionReached = func(seq uint16) {
@@ -82,9 +99,17 @@ func main() {
 			mavc.MissionActive = false
 			mavc.LastSeq = 0
 			isLast = true
-			makePhoto(mqttClient)
+			makePhoto(mqttClient, mavc.MissionId)
 		}
-		droneHandlerWS.DroneMissionBroadcast(shared.MissionStatus{WaypointId: seq, IsLast: isLast})
+
+		droneHandlerWS.DroneMissionBroadcast(shared.MissionEvent{
+			Type: shared.EventWaypointPassed,
+			Data: shared.WaypointPassed{
+				WaypointId: seq,
+				IsLast: isLast,
+			},
+		})
+
 	}
 
 	httphandler := middleware.CorsMiddleware(mux)

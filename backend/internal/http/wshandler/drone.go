@@ -26,7 +26,7 @@ func (h *DroneHandlerWS) DroneMissionHandle(w http.ResponseWriter, r *http.Reque
     conns.Unlock()
 }
 
-func (h *DroneHandlerWS) DroneMissionBroadcast(s shared.MissionStatus) {
+func (h *DroneHandlerWS) DroneMissionBroadcast(s shared.MissionEvent) {
     b, _ := json.Marshal(s)
     conns.Lock()
 
@@ -39,6 +39,7 @@ func (h *DroneHandlerWS) DroneMissionBroadcast(s shared.MissionStatus) {
         }
         i++
     }
+
     conns.Unlock()
 }
 

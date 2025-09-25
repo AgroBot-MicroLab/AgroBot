@@ -1,0 +1,10 @@
+ALTER TABLE images
+ADD COLUMN mission_id BIGINT;
+
+ALTER TABLE images
+ADD CONSTRAINT fk_images_mission
+FOREIGN KEY (mission_id)
+REFERENCES mission (id)
+ON DELETE SET NULL
+ON UPDATE CASCADE;
+

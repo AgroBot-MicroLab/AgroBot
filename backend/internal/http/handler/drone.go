@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"agro-bot/internal/db"
 	"agro-bot/internal"
 	"agro-bot/internal/mav"
 )
@@ -77,8 +78,22 @@ func (h *DroneHandler) Mission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	type res struct {
+		MissionId int64 `json:"mission_id"`
+	};
+
+	id, err := db.CreateMission(h.App.DB);
+	if (err != nil) {
+		w.WriteHeader(http.StatusBadRequest);
+		return
+	}
+
+	h.App.MavLinkClient.MissionId = id;
+	response := res{MissionId: id}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
+
 func (h *DroneHandler) StopMission(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

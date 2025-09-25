@@ -6,11 +6,12 @@ import random
 import requests
 from pathlib import Path
 import mimetypes
-from picamera import make_photo
+import json
+#from picamera import make_photo
 
-BASE_URL   = os.getenv("BASE_URL", "http://10.120.154.245:8080")
+BASE_URL   = os.getenv("BASE_URL", "http://localhost:8080")
 IMAGES_DIR = Path(os.getenv("IMAGES_DIR", "./"))
-URL = f"{BASE_URL}/image/1"
+URL = f"{BASE_URL}/image/"
 
 def pick_image(p: Path) -> Path:
     imgs = [x for x in p.iterdir() if x.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".gif")]
@@ -18,14 +19,16 @@ def pick_image(p: Path) -> Path:
         raise RuntimeError(f"No images in {p.resolve()}")
     return random.choice(imgs)
 
-def send_image():
+def send_image(missionId):
+    imageUrl = URL+str(missionId)
+
     img = pick_image(IMAGES_DIR)
     ctype = mimetypes.guess_type(img.name)[0] or "application/octet-stream"
-    print(f"POST {URL} <- {img.name} ({ctype})")
+    print(f"POST {imageUrl} <- {img.name} ({ctype})")
 
     with open(img, "rb") as fh:
         files = {"image": (img.name, fh, ctype)}
-        resp = requests.post(URL, files=files, timeout=60)
+        resp = requests.post(imageUrl, files=files, timeout=60)
 
     print("Status:", resp.status_code)
     print("Response:", resp.text[:500])
@@ -44,9 +47,11 @@ def run_sub(host, port, topic, qos):
             payload = msg.payload.decode("utf-8")
         except Exception:
             payload = msg.payload
+
+        data = json.loads(payload)
         print(f"[sub] {msg.topic} qos={msg.qos}: {payload}")
-        send_image()
-        make_photo()
+        send_image(data["mission_id"])
+        #make_photo()
 
     c.on_connect = on_connect
     c.on_message = on_message
