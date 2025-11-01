@@ -41,6 +41,7 @@ useWebSocket(`${wsBaseUrl}/drone/mission/status`, (event) => {
             }
             break;
         case "photo_received":
+            console.log(event);
             image.value = event.data.path;
             break;
         default:
@@ -55,7 +56,7 @@ onBeforeUnmount(close)
     <GoogleMap
         :api-key="apiKey"
         map-id="main-map"
-        :center="{ lat: -35.363163, lng: 149.1652221 }"
+        :center="{ lat: 47.061657183060966, lng: 28.867524495508608 }"
         :zoom="18"
         map-type-id="satellite"
         style="width:100%; height:100vh"
@@ -66,7 +67,7 @@ onBeforeUnmount(close)
             <template #content>
                 <img
                     src="/drone.png"
-                    style="height:40px;width:40px"
+                    style="height:50px;width:50px"
                     :style="{ transform: `translate(0%,50%) rotate(${dronePos.yaw+180}deg)` }"
                 />
             </template>
