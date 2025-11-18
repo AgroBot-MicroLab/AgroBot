@@ -1,6 +1,7 @@
 <script setup>
 import {ref, onMounted} from "vue"
 import { useMission } from '@/composables/useMission'
+import Mission from '@/components/Mission.vue'
 const { dronePos, targetPos, pathPts, clearPath } = useMission()
 
 const missionActive = ref(false)
@@ -56,5 +57,6 @@ onMounted(() => {
         Stop Mission
       </button>
     </div>
+    <Mission/>
   </div>
 </template>
