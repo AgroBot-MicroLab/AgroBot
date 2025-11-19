@@ -82,7 +82,7 @@ func (h *DroneHandler) Mission(w http.ResponseWriter, r *http.Request) {
 		MissionId int64 `json:"mission_id"`
 	};
 
-	id, err := db.CreateMission(h.App.DB);
+	id, err := db.CreateMission(h.App.DB, wps);
 	if (err != nil) {
 		w.WriteHeader(http.StatusBadRequest);
 		return

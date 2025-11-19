@@ -35,6 +35,35 @@ type ImageRecord struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+func (h ImageHandler) GetAllImagePaths(w http.ResponseWriter, r *http.Request) {
+    rows, err := h.App.DB.Query(`SELECT path FROM images ORDER BY id`)
+    if err != nil {
+        http.Error(w, "failed to fetch images", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var paths []string
+
+    for rows.Next() {
+        var p string
+        if err := rows.Scan(&p); err != nil {
+            http.Error(w, "scan error", http.StatusInternalServerError)
+            return
+        }
+        paths = append(paths, p)
+    }
+
+    if err := rows.Err(); err != nil {
+        http.Error(w, "query error", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(paths)
+}
+
+
 // Upload stores an image linked to a mission by mission_id.
 // Expects multipart/form-data with field "image".
 func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, missionIDStr string) {
@@ -139,7 +168,7 @@ func (h ImageHandler) Upload(w http.ResponseWriter, r *http.Request, missionIDSt
     if _, e = tx.ExecContext(
         r.Context(),
         `UPDATE images SET path=$1 WHERE id=$2`,
-        relPath, imageID,
+        filename, imageID,
     ); e != nil {
         err = e
         _ = os.Remove(relPath)

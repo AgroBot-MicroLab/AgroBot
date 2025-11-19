@@ -47,16 +47,26 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
-const images = ref([
-  { id: 1, url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400'},
-  { id: 2, url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400'},
-  { id: 3, url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400'},
-  { id: 4, url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400' },
-  { id: 5, url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=400'},
-  { id: 6, url: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=400'}
-]);
+const httpBaseUrl = import.meta.env.VITE_API_BASE
+const images = ref([]);
+
+onMounted(async () => {
+    await getImages();
+});
+
+async function getImages() {
+    const res = await fetch(`${httpBaseUrl}/image`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+    })
+    const data = await res.json();
+
+    for (let i = 0; i < data.length; ++i) {
+        images.value.push({ id: i, url: `${httpBaseUrl}/image/${data[i]}` });
+    }
+}
 
 const selected = ref(null);
 

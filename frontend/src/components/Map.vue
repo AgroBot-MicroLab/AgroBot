@@ -41,7 +41,6 @@ useWebSocket(`${wsBaseUrl}/drone/mission/status`, (event) => {
             }
             break;
         case "photo_received":
-            console.log(event);
             image.value = event.data.path;
             break;
         default:

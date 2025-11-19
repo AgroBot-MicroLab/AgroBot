@@ -11,6 +11,10 @@ func ImageRouter(mux *http.ServeMux, h handler.ImageHandler) {
 		h.Upload(w, r, r.PathValue("id"))
 	})
 
+	mux.HandleFunc("GET /image", func(w http.ResponseWriter, r *http.Request) {
+		h.GetAllImagePaths(w, r)
+	})
+
 	mux.HandleFunc("GET /image/{fileName}", func(w http.ResponseWriter, r *http.Request) {
 		fileName := r.PathValue("fileName")
 		if fileName == "" {

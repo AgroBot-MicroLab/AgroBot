@@ -69,9 +69,6 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	testHandler := handler.TestHandler{App: &app}
-	router.TestRouter(mux, testHandler)
-
 	pointsHandler := handler.PointsHandler{App: &app}
 	router.PointsRouter(mux, pointsHandler)
 

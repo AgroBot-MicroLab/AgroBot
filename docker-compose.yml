@@ -12,7 +12,7 @@ services:
       - "14550:14550/udp"
     environment:
       GOTOOLCHAIN: "auto"
-      DATABASE_URL: "postgres://app:secret@db:5432/appdb?sslmode=disable"
+      DATABASE_URL: "postgres://root:root@db:5432/appdb?sslmode=disable"
       UPLOAD_DIR: "/var/www/uploads"
       MQTT_UUID: "2f37308d-ccf8-4685-8329-c164599259ca"
     depends_on:
@@ -41,14 +41,14 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=app
-      - POSTGRES_PASSWORD=secret
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
       - POSTGRES_DB=appdb
     ports: ["5432:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      test: ["CMD-SHELL", "pg_isready -U root -d appdb"]
       interval: 2s
       timeout: 2s
       retries: 20

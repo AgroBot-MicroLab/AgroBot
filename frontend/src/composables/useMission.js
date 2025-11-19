@@ -6,13 +6,20 @@ const state = reactive({
     pathPts: []
 })
 
+function setMission(pts) {
+    clearPath();
+
+    for (const point of pts) {
+        state.pathPts.push({ lat: point.lat, lng: point.lon })
+    }
+}
+
 function setDronePos(lat, lng, yaw) {
     state.dronePos = { lat, lng, yaw }
-    if (state.pathPts.length === 0) state.pathPts.push({ lat, lng, yaw })
+    if (state.pathPts.length === 0) state.pathPts.push({ lat, lng })
     else {
         state.pathPts[0].lat = lat
         state.pathPts[0].lng = lng
-        state.pathPts[0].yaw = yaw
     }
 }
 
@@ -33,6 +40,7 @@ export function useMission() {
         setDronePos,
         addTarget,
         clearPath,
+        setMission,
     }
 }
 
