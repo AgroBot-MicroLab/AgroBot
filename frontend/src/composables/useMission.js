@@ -16,7 +16,7 @@ function setMission(pts) {
 
 function setDronePos(lat, lng, yaw) {
     state.dronePos = { lat, lng, yaw }
-    if (state.pathPts.length === 0) state.pathPts.push({ lat, lng })
+    if (state.pathPts.length === 0) state.pathPts.push({ lat, lng, yaw })
     else {
         state.pathPts[0].lat = lat
         state.pathPts[0].lng = lng
