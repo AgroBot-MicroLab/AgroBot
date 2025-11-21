@@ -18,6 +18,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
 
   web:
     build:
