@@ -1,7 +1,6 @@
 <script setup>
 import Map from '@/components/Map.vue'
 import Sidebar from '@/components/Sidebar.vue'
-import { ref } from 'vue'
 </script>
 
 <template>
@@ -30,5 +29,6 @@ import { ref } from 'vue'
   flex: 0 0 20%;
   border-left: 1px solid #ddd;
   padding: 10px;
+  overflow-y: auto;
 }
 </style>

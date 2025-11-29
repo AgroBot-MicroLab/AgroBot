@@ -3,12 +3,12 @@ import { reactive, toRefs } from 'vue'
 const state = reactive({
     dronePos: null,
     targetPos: null,
-    pathPts: []
+    pathPts: [],
+    currentMissionId: null,
 })
 
 function setMission(pts) {
-    clearPath();
-
+    clearPath()
     for (const point of pts) {
         state.pathPts.push({ lat: point.lat, lng: point.lon })
     }
@@ -31,7 +31,13 @@ function addTarget(lat, lng) {
 function clearPath() {
     state.targetPos = null
     state.pathPts.splice(0)
-    state.pathPts.push({ lat: state.dronePos.lat, lng: state.dronePos.lng })
+    if (state.dronePos) {
+        state.pathPts.push({ lat: state.dronePos.lat, lng: state.dronePos.lng })
+    }
+}
+
+function setCurrentMissionId(id) {
+    state.currentMissionId = id
 }
 
 export function useMission() {
@@ -41,6 +47,6 @@ export function useMission() {
         addTarget,
         clearPath,
         setMission,
+        setCurrentMissionId,
     }
 }
-

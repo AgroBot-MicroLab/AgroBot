@@ -15,6 +15,10 @@ func MissionRouter(mux *http.ServeMux, missionHandler *handler.MissionHandler) {
 		missionHandler.GetAllMissions(w, r)
 	})
 
+	mux.HandleFunc("PATCH /mission/{missionId}", func(w http.ResponseWriter, r *http.Request) {
+		missionHandler.UpdateMission(w, r)
+	})
+
 	mux.HandleFunc("DELETE /mission/{missionId}", func(w http.ResponseWriter, r *http.Request) {
 		missionHandler.DeleteMission(w, r)
 	})
