@@ -3,12 +3,17 @@ import {ref, onMounted} from "vue"
 import { useMission } from '@/composables/useMission'
 import Gallery from '@/components/Gallery.vue'
 import Mission from '@/components/Mission.vue'
+import BatteryWarning from '@/components/BatteryWarning.vue'
 const { dronePos, targetPos, pathPts, clearPath } = useMission()
 
 const missionActive = ref(false)
 const missionsList = ref([])
 const showGallery = ref(false)
 const httpBaseUrl = import.meta.env.VITE_API_BASE
+
+const batteryLevel = ref(100)
+const batteryLowThreshold = 20
+const batteryLow = computed(() => batteryLevel.value <= batteryLowThreshold)
 
 function openGallery() {
   showGallery.value = true
@@ -49,6 +54,11 @@ async function getMissions() {
     return data;
 }
 
+function onCharge() {
+  console.log("Charging triggered")
+  batteryLevel.value = 100 
+}
+
 onMounted(async () => {
   const ws = new WebSocket("ws://localhost:8080/drone/mission/status")
   ws.onmessage = (event) => {
@@ -74,7 +84,7 @@ onMounted(async () => {
       </button>
       <button
         v-show="missionActive"
-        class="g-gradient-to-r from-red-500 to-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-red-600 hover:to-red-800 transition-all duration-500"
+        class="bg-gradient-to-r from-red-500 to-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-red-600 hover:to-red-800 transition-all duration-500"
         @click="stopMission()"
       >
         Stop Mission
@@ -93,21 +103,46 @@ onMounted(async () => {
       >
         Open Gallery
       </button>
-
-      <div v-if="showGallery" class="fixed inset-0 z-50">
-        <Gallery />
-        <button
-          @click="closeGallery"
-          class="absolute top-4 right-4 px-4 py-2 bg-red-600 text-white rounded hover:opacity-80 transition"
-        >
-          Close
-        </button>
-      </div>
     </div>
 
-    <div v-for="mission in missionsList">
-        <Mission :mission="mission" />
+    <!-- Индикатор батареи -->
+    <div class="battery-sidebar mt-4">
+      <div class="battery-level-bar" :style="{ width: batteryLevel + '%' }"></div>
+      <span>{{ batteryLevel }}%</span>
     </div>
 
+    <!-- Модалка при низком заряде -->
+    <BatteryWarning :show="batteryLow" @charging="onCharge" />
+
+    <div v-if="showGallery" class="fixed inset-0 z-50">
+      <Gallery />
+      <button
+        @click="closeGallery"
+        class="absolute top-4 right-4 px-4 py-2 bg-red-600 text-white rounded hover:opacity-80 transition"
+      >
+        Close
+      </button>
+    </div>
+
+    <div v-for="mission in missionsList" :key="mission.id">
+      <Mission :mission="mission" />
+    </div>
   </div>
 </template>
+
+<style scoped>
+.battery-sidebar {
+  margin-top: 10px;
+  width: 150px;
+  height: 20px;
+  background: #d9d9d9;
+  border-radius: 10px;
+  position: relative;
+}
+.battery-level-bar {
+  height: 100%;
+  background: #06b000;
+  border-radius: 10px 0 0 10px;
+  transition: width 0.3s;
+}
+</style>
