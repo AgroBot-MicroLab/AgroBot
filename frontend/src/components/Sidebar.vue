@@ -74,7 +74,7 @@ onMounted(async () => {
       </button>
       <button
         v-show="missionActive"
-        class="g-gradient-to-r from-red-500 to-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-red-600 hover:to-red-800 transition-all duration-500"
+        class="bg-gradient-to-r from-red-500 to-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-red-600 hover:to-red-800 transition-all duration-500"
         @click="stopMission()"
       >
         Stop Mission
@@ -108,6 +108,5 @@ onMounted(async () => {
     <div v-for="mission in missionsList">
         <Mission :mission="mission" />
     </div>
-
   </div>
 </template>

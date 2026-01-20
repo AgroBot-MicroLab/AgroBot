@@ -8,7 +8,7 @@
                  py-2 px-5 rounded-xl shadow-md transition-all duration-300"
           @click="previewMission"
         >
-          Select
+          Preview
         </button>
 
         <button

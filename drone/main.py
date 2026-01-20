@@ -10,11 +10,11 @@ import json
 #from picamera import make_photo
 
 BASE_URL   = os.getenv("BASE_URL", "http://localhost:8080")
-IMAGES_DIR = Path(os.getenv("IMAGES_DIR", "./"))
+IMAGES_DIR = Path(os.getenv("IMAGES_DIR", "./images"))
 URL = f"{BASE_URL}/image/"
 
 def pick_image(p: Path) -> Path:
-    imgs = [x for x in p.iterdir() if x.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".gif")]
+    imgs = [x for x in p.iterdir() if x.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".jfif")]
     if not imgs:
         raise RuntimeError(f"No images in {p.resolve()}")
     return random.choice(imgs)

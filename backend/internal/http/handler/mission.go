@@ -81,6 +81,7 @@ func (h MissionHandler) GetAllMissions(w http.ResponseWriter, r *http.Request) {
         ORDER BY m.id, p.id
     `)
     if err != nil {
+		log.Println("DB query failed:", err)
         http.Error(w, "failed to fetch missions", http.StatusInternalServerError)
         return
     }
