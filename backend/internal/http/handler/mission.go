@@ -10,6 +10,10 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"crypto/sha256"
+    "encoding/hex"
+    "sort"
+	"strings"
 	_ "time"
 )
 
@@ -143,49 +147,95 @@ func (h MissionHandler) GetAllMissions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+type normWP struct {
+    Lat int64
+    Lon int64
+}
+
+func hashWaypoints(wps []struct {
+    Lat float64 `json:"lat"`
+    Lon float64 `json:"lon"`
+}) string {
+
+    const scale = 1e7
+
+    n := make([]normWP, len(wps))
+    for i, wp := range wps {
+        n[i] = normWP{
+            Lat: int64(wp.Lat * scale),
+            Lon: int64(wp.Lon * scale),
+        }
+    }
+
+    sort.Slice(n, func(i, j int) bool {
+        if n[i].Lat == n[j].Lat {
+            return n[i].Lon < n[j].Lon
+        }
+        return n[i].Lat < n[j].Lat
+    })
+
+    b, _ := json.Marshal(n)
+    h := sha256.Sum256(b)
+    return hex.EncodeToString(h[:])
+}
+
 func (h MissionHandler) CreateMission(w http.ResponseWriter, r *http.Request) {
-	var req MissionRequest
+    var req MissionRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "invalid request body", http.StatusBadRequest)
+        return
+    }
 
-	tx, err := h.App.DB.Begin()
-	if err != nil {
-		http.Error(w, "failed to start transaction", http.StatusInternalServerError)
-		return
-	}
-	defer tx.Rollback()
+    if len(req.Waypoints) == 0 {
+        http.Error(w, "no waypoints", http.StatusBadRequest)
+        return
+    }
 
-	var missionID int
-	err = tx.QueryRow(`INSERT INTO mission DEFAULT VALUES RETURNING id`).Scan(&missionID)
-	if err != nil {
-		http.Error(w, "failed to create mission", http.StatusInternalServerError)
-		return
-	}
+    pointsHash := hashWaypoints(req.Waypoints)
 
-	fmt.Println("Hello?")
-	for _, wp := range req.Waypoints {
-		fmt.Println(wp)
-		_, err = tx.Exec(
-			`INSERT INTO point (lat, long, mission_id) VALUES ($1, $2, $3)`,
-			wp.Lat, wp.Lon, missionID,
-		)
+    tx, err := h.App.DB.Begin()
+    if err != nil {
+        http.Error(w, "failed to start transaction", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
 
-		if err != nil {
-			http.Error(w, "failed to insert waypoint", http.StatusInternalServerError)
-			return
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		http.Error(w, "commit failed", http.StatusInternalServerError)
-		return
-	}
+    var missionID int
+    err = tx.QueryRow(`
+        INSERT INTO mission (points_hash)
+        VALUES ($1)
+        RETURNING id
+    `, pointsHash).Scan(&missionID)
 
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf(`{"mission_id": %d}`, missionID)))
-	log.Printf("Created mission %d with %d waypoints", missionID, len(req.Waypoints))
+    if err != nil {
+        if strings.Contains(err.Error(), "mission_points_hash_uq") {
+            http.Error(w, "mission with same waypoints already exists", http.StatusConflict)
+            return
+        }
+        http.Error(w, "failed to create mission", http.StatusInternalServerError)
+        return
+    }
+
+    for _, wp := range req.Waypoints {
+        _, err = tx.Exec(
+            `INSERT INTO point (lat, long, mission_id)
+             VALUES ($1,$2,$3)`,
+            wp.Lat, wp.Lon, missionID,
+        )
+        if err != nil {
+            http.Error(w, "failed to insert waypoint", http.StatusInternalServerError)
+            return
+        }
+    }
+
+    if err := tx.Commit(); err != nil {
+        http.Error(w, "commit failed", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    w.Write([]byte(fmt.Sprintf(`{"mission_id": %d}`, missionID)))
 }
 
 func (h MissionHandler) UpdateMission(w http.ResponseWriter, r *http.Request) {
